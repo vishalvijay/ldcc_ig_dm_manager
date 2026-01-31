@@ -1,12 +1,33 @@
-# Sprint 6: Account Setup, Testing & Deployment
+# Sprint 6: Account Setup & Deployment
+
+## Status: Pending
+
+## Overview
+Security hardening is complete (Sprint 4). This sprint focuses on Meta Developer App setup, Firebase configuration, and production deployment.
 
 ## Goals
 - Set up Meta Developer App (Instagram + WhatsApp)
-- Configure Firebase project and Cloud Tasks
-- Implement error handling and rate limiting
-- Deploy to production
+- Configure Firebase project for production
+- Deploy and verify production environment
 
-## Tasks
+## Completed Tasks (from Sprint 4)
+
+### Security Hardening
+- [x] X-Hub-Signature-256 validation for Instagram webhooks
+- [x] OIDC token validation for Cloud Tasks callbacks
+- [x] Service account verification in production mode
+- [x] Skip validation in emulator/development mode
+
+### Rate Limiting & Retry
+- [x] Exponential backoff in Instagram service (3 retries)
+- [x] Rate limit handling (429 response)
+- [x] Server error retries (500+ responses)
+
+### Firestore Security
+- [x] Create `firestore.indexes.json` for required indexes
+- [x] `conversations/{threadId}/messages` - status + createdAt composite index
+
+## Remaining Tasks
 
 ### 6.1 Meta Developer App Setup
 - [ ] Create Meta Developer App
@@ -20,36 +41,24 @@
 - [ ] Create Firebase project (if not exists)
 - [ ] Enable Firestore
 - [ ] Enable Cloud Tasks API
-- [ ] Configure environment variables
-- [ ] Set up service account permissions
+- [ ] Deploy Firestore indexes (`firebase deploy --only firestore:indexes`)
+- [ ] Configure environment variables via Firebase Functions config
+- [ ] Set up service account permissions for Cloud Tasks
 
-### 6.3 Error Handling
-- [ ] Create `src/utils/errorHandler.ts`
-- [ ] Centralized error logging
-- [ ] Error categorization (retryable vs fatal)
-- [ ] Alert on critical errors
-- [ ] Dead letter queue for failed messages
-
-### 6.4 Rate Limiting
-- [ ] Create `src/utils/rateLimiter.ts`
-- [ ] Instagram API rate limits (200/hour)
-- [ ] WhatsApp API rate limits
-- [ ] Implement token bucket algorithm
-- [ ] Queue overflow handling
-
-### 6.5 Production Deployment
-- [ ] Deploy functions to Firebase
-- [ ] Configure webhook URL in Meta Developer
+### 6.3 Production Deployment
+- [ ] Deploy functions: `npm run deploy`
+- [ ] Configure webhook URL in Meta Developer Console
 - [ ] Verify webhook subscription
-- [ ] Test end-to-end flow
+- [ ] Test end-to-end flow with real Instagram DM
 - [ ] Monitor initial production traffic
 
-### 6.6 Verification & Monitoring
-- [ ] Verify GenKit dev UI accessible
-- [ ] Verify Firebase emulator runs all functions
-- [ ] Verify Instagram webhook connected
-- [ ] Verify WhatsApp notifications working
-- [ ] Set up monitoring dashboards
+### 6.4 Verification Checklist
+- [ ] GenKit dev UI accessible locally
+- [ ] Firebase emulator runs all functions
+- [ ] Instagram webhook verification endpoint works
+- [ ] Instagram message webhook receives events
+- [ ] WhatsApp notifications delivered to manager
+- [ ] Cloud Functions logs accessible in console
 
 ## Meta Developer App Configuration
 
@@ -104,7 +113,7 @@ PROCESS_MESSAGE_URL=https://{region}-{project}.cloudfunctions.net/processMessage
 3. Investigate and fix issues
 4. Re-enable webhook
 
-## File Structure (Final)
+## File Structure (Current)
 ```
 src/
 ├── config/
@@ -113,27 +122,20 @@ src/
 ├── flows/
 │   └── dmAgent.ts
 ├── functions/
-│   ├── webhookHandler.ts
-│   └── processMessage.ts
+│   ├── webhookHandler.ts    # Instagram webhook + signature validation
+│   └── processMessage.ts    # Cloud Tasks callback + OIDC validation
 ├── prompts/
 │   └── system.ts
-├── schemas/
-│   └── agentResponse.ts
 ├── services/
-│   ├── actionExecutor.ts
-│   ├── debouncer.ts
-│   ├── instagram.ts
-│   └── whatsapp.ts
+│   ├── instagram.ts         # Graph API client with retry/rate limiting
+│   └── messageStore.ts      # Firestore CRUD + Cloud Tasks scheduling
 ├── tools/
-│   ├── index.ts
-│   ├── firestore.ts
-│   ├── instagram.ts
-│   ├── spond.ts
-│   └── whatsapp.ts
+│   ├── index.ts             # Tool registry
+│   ├── firestore.ts         # Conversation/user data tools
+│   ├── instagram.ts         # LLM action tools (send, react)
+│   ├── spond.ts             # MCP client for session dates
+│   └── whatsapp.ts          # Manager notification tool
 ├── types/
 │   └── index.ts
-├── utils/
-│   ├── errorHandler.ts
-│   └── rateLimiter.ts
-└── index.ts
+└── index.ts                  # Function exports
 ```

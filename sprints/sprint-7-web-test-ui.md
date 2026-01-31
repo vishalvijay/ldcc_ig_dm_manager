@@ -1,30 +1,34 @@
 # Sprint 7: Web UI for Chat Testing
 
+## Status: Pending
+
+## Overview
+Build a web-based chat interface to test the DM agent without requiring Instagram integration. This enables rapid iteration during development and provides debugging visibility into agent reasoning.
+
 ## Goals
 - Build a web-based chat interface to test the DM agent
 - Enable rapid iteration without Instagram integration
-- Display agent reasoning and actions for debugging
+- Display agent reasoning and tool calls for debugging
 - Support conversation reset and history viewing
 
 ## Tasks
 
 ### 7.1 Backend API Endpoints
-- [ ] Create `/api/chat` endpoint for sending test messages
-- [ ] Create `/api/conversations` endpoint to list/manage conversations
-- [ ] Create `/api/conversations/:id/reset` endpoint to clear conversation
-- [ ] Add test mode flag to bypass Instagram-specific logic
-- [ ] Return agent's thinking and actions in response
+- [ ] Create `src/functions/testChat.ts` - POST /api/chat endpoint
+- [ ] Create `src/functions/testConversations.ts` - Conversation management API
+- [ ] Add test mode flag to bypass Instagram webhook logic
+- [ ] Return agent's thinking, tool calls, and actions in response
 
 ### 7.2 Static File Serving
-- [ ] Configure Firebase Functions to serve static files
+- [ ] Configure Firebase Hosting for static files
 - [ ] Set up `public/` directory for web assets
-- [ ] Add route handler for serving the UI
+- [ ] Configure rewrites in `firebase.json`
 
 ### 7.3 Chat UI Components
 - [ ] Create main chat interface (`public/index.html`)
 - [ ] Build message input and send functionality
 - [ ] Display conversation thread with user/agent messages
-- [ ] Show agent's thinking/reasoning in collapsible panel
+- [ ] Show agent's tool calls in collapsible panel
 - [ ] Display executed actions (send, react, notify)
 - [ ] Add typing indicator during agent processing
 
@@ -32,13 +36,12 @@
 - [ ] Implement conversation selector/switcher
 - [ ] Add "New Conversation" button
 - [ ] Add "Reset Conversation" functionality
-- [ ] Persist conversation list in UI
 - [ ] Auto-scroll to latest message
 
 ### 7.5 Debug Features
-- [ ] Toggle to show/hide agent reasoning
+- [ ] Toggle to show/hide tool call details
 - [ ] Display raw agent response JSON
-- [ ] Show tool calls and their results
+- [ ] Show tool inputs and outputs
 - [ ] Add latency/timing information
 - [ ] Error display with retry option
 
@@ -72,18 +75,17 @@ Response:
 ```json
 {
   "conversationId": "test-conv-123",
-  "thinking": "New user interested in joining...",
-  "actions": [
-    {
-      "type": "sendMessage",
-      "message": "Welcome! London Desperados..."
-    }
-  ],
+  "response": "Welcome! London Desperados...",
   "toolCalls": [
     {
-      "tool": "getUpcomingSessions",
+      "tool": "spond/get_desperados_events",
       "input": {},
-      "output": [...]
+      "output": [{ "date": "2024-02-15", "name": "Net Session" }]
+    },
+    {
+      "tool": "sendInstagramMessage",
+      "input": { "recipientId": "test-user", "text": "Welcome..." },
+      "output": { "success": true, "messageId": "mock_123" }
     }
   ],
   "processingTimeMs": 1234
@@ -154,11 +156,11 @@ public/
 ## Technical Notes
 
 ### Test Mode vs Production
-- Test mode uses mock sender ID and simplified context
-- Same dmAgent flow processes messages
+- Test mode uses mock sender ID (`test-user-{id}`) and simplified context
+- Same dmAgentFlow processes messages
 - Tools still work (Spond MCP, Firestore)
-- No Instagram/WhatsApp API calls in test mode
-- Actions logged but not executed externally
+- Instagram/WhatsApp tools operate in mock mode (`MOCK_INSTAGRAM=true`, `MOCK_WHATSAPP=true`)
+- All tool calls are logged and returned in response for debugging
 
 ### Frontend Stack
 - Vanilla HTML/CSS/JavaScript (no build step)
@@ -169,4 +171,5 @@ public/
 ## Dependencies
 - No additional npm packages required
 - Uses existing Firebase Functions infrastructure
-- Leverages dmAgent flow from Sprint 2
+- Leverages dmAgentFlow from Sprint 2
+- Mock mode for Instagram/WhatsApp services
