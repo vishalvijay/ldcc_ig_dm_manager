@@ -10,6 +10,7 @@
 
 import * as logger from "firebase-functions/logger";
 import { CloudTasksClient, protos } from "@google-cloud/tasks";
+import { status as grpcStatus } from "@grpc/grpc-js";
 import { getDb } from "../config/firebase";
 import { InstagramMessage, StoredMessage, MessageStatus } from "../types";
 
@@ -26,6 +27,8 @@ const PROJECT_ID = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || "";
 const LOCATION = process.env.FUNCTION_REGION || "us-central1";
 const QUEUE_NAME = process.env.CLOUD_TASKS_QUEUE || "dm-processing";
 const PROCESS_MESSAGE_URL = process.env.PROCESS_MESSAGE_URL || "";
+// Default Firebase service account: {PROJECT_ID}@appspot.gserviceaccount.com
+const CLOUD_TASKS_SERVICE_ACCOUNT = PROJECT_ID ? `${PROJECT_ID}@appspot.gserviceaccount.com` : "";
 
 /**
  * Check if Cloud Tasks mock mode is enabled.
@@ -131,6 +134,13 @@ export async function scheduleProcessing(
           messageId,
         })
       ).toString("base64"),
+      // OIDC authentication for secure Cloud Tasks invocation
+      ...(CLOUD_TASKS_SERVICE_ACCOUNT && {
+        oidcToken: {
+          serviceAccountEmail: CLOUD_TASKS_SERVICE_ACCOUNT,
+          audience: PROCESS_MESSAGE_URL,
+        },
+      }),
     },
     scheduleTime: {
       seconds: Math.floor(scheduleTime.getTime() / 1000),
@@ -150,8 +160,7 @@ export async function scheduleProcessing(
   } catch (error) {
     // If task already exists (ALREADY_EXISTS error), that's fine - debouncing is working
     const errorCode = (error as { code?: number }).code;
-    if (errorCode === 6) {
-      // ALREADY_EXISTS
+    if (errorCode === grpcStatus.ALREADY_EXISTS) {
       logger.info("Task already scheduled for thread (debouncing)", {
         threadId,
         messageId,

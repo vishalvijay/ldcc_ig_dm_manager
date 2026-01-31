@@ -38,10 +38,14 @@ function validateSignature(
       .update(payload)
       .digest("hex");
 
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expectedSignature)
-  );
+  // Ensure same length before timing-safe comparison to prevent length-based attacks
+  const sigBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expectedSignature);
+  if (sigBuffer.length !== expectedBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(sigBuffer, expectedBuffer);
 }
 
 /**

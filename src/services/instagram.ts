@@ -252,7 +252,7 @@ export class InstagramService {
       return [];
     }
 
-    const url = `${GRAPH_API_BASE}/${threadId}?fields=messages{id,message,from,created_time}&limit=${limit}&access_token=${this.accessToken}`;
+    const url = `${GRAPH_API_BASE}/${threadId}?fields=messages{id,message,from,created_time}&limit=${limit}`;
     const response = await fetchWithRetry(url, {
       method: "GET",
       headers: {
@@ -303,7 +303,7 @@ export class InstagramService {
       };
     }
 
-    const url = `${GRAPH_API_BASE}/${userId}?fields=id,username,name&access_token=${this.accessToken}`;
+    const url = `${GRAPH_API_BASE}/${userId}?fields=id,username,name`;
     const response = await fetchWithRetry(url, {
       method: "GET",
       headers: {

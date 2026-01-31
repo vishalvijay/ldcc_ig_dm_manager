@@ -3,10 +3,14 @@
  *
  * Fetches pending messages and invokes the dmAgentFlow which handles
  * actions via tool calls.
+ *
+ * Security: Validates OIDC token from Cloud Tasks to ensure only authorized
+ * invocations are processed.
  */
 
 import * as logger from "firebase-functions/logger";
 import { onRequest } from "firebase-functions/v2/https";
+import { OAuth2Client } from "google-auth-library";
 import {
   claimPendingMessages,
   getConversationHistory,
@@ -18,9 +22,70 @@ import { getInstagramService } from "../services/instagram";
 import { dmAgentFlow, DmAgentInput } from "../flows/dmAgent";
 import { ConversationMessage, StoredMessage, MessageStatus } from "../types";
 
+// OIDC validation configuration
+const PROJECT_ID = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || "";
+const PROCESS_MESSAGE_URL = process.env.PROCESS_MESSAGE_URL || "";
+// Default Firebase service account: {PROJECT_ID}@appspot.gserviceaccount.com
+const CLOUD_TASKS_SERVICE_ACCOUNT = PROJECT_ID ? `${PROJECT_ID}@appspot.gserviceaccount.com` : "";
+
+// OAuth2 client for token verification
+const authClient = new OAuth2Client();
+
 interface ProcessMessagePayload {
   threadId: string;
   messageId: string;
+}
+
+/**
+ * Validate OIDC token from Cloud Tasks.
+ * Returns true if valid, false otherwise.
+ */
+async function validateOidcToken(authHeader: string | undefined): Promise<boolean> {
+  // Skip validation in emulator/development mode
+  if (process.env.FUNCTIONS_EMULATOR === "true" || process.env.MOCK_CLOUD_TASKS === "true") {
+    logger.debug("Skipping OIDC validation in development mode");
+    return true;
+  }
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    logger.warn("Missing or invalid Authorization header");
+    return false;
+  }
+
+  const token = authHeader.substring(7); // Remove "Bearer " prefix
+
+  try {
+    const ticket = await authClient.verifyIdToken({
+      idToken: token,
+      audience: PROCESS_MESSAGE_URL,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload) {
+      logger.warn("OIDC token has no payload");
+      return false;
+    }
+
+    // Verify the token is from our Cloud Tasks service account
+    if (CLOUD_TASKS_SERVICE_ACCOUNT && payload.email !== CLOUD_TASKS_SERVICE_ACCOUNT) {
+      logger.warn("OIDC token from unexpected service account", {
+        expected: CLOUD_TASKS_SERVICE_ACCOUNT,
+        actual: payload.email,
+      });
+      return false;
+    }
+
+    logger.debug("OIDC token validated successfully", {
+      email: payload.email,
+      audience: payload.aud,
+    });
+    return true;
+  } catch (error) {
+    logger.error("OIDC token validation failed", {
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+    return false;
+  }
 }
 
 /**
@@ -62,11 +127,19 @@ export const processMessage = onRequest(
       return;
     }
 
+    // Validate OIDC token from Cloud Tasks
+    const authHeader = req.headers.authorization as string | undefined;
+    const isAuthenticated = await validateOidcToken(authHeader);
+    if (!isAuthenticated) {
+      res.status(401).send("Unauthorized");
+      return;
+    }
+
     let payload: ProcessMessagePayload;
     try {
       payload = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
-    } catch {
-      logger.error("Failed to parse request payload");
+    } catch (error) {
+      logger.error("Failed to parse request payload", { error });
       res.status(400).send("Invalid JSON");
       return;
     }

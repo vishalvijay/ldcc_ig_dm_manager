@@ -4,6 +4,9 @@
     "runtime": "nodejs20",
     "predeploy": ["npm run lint", "npm run build"]
   },
+  "firestore": {
+    "indexes": "firestore.indexes.json"
+  },
   "emulators": {
     "functions": {
       "port": 5001
