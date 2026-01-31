@@ -25,6 +25,7 @@ Build an Instagram DM agent for London Desperados Cricket Club using Firebase Ge
 | 4 | Instagram Integration | [sprint-4-instagram.md](sprints/sprint-4-instagram.md) |
 | 5 | WhatsApp & Message Processing | [sprint-5-whatsapp-processing.md](sprints/sprint-5-whatsapp-processing.md) |
 | 6 | Account Setup, Testing & Deployment | [sprint-6-deployment.md](sprints/sprint-6-deployment.md) |
+| 7 | Web UI for Chat Testing | [sprint-7-web-test-ui.md](sprints/sprint-7-web-test-ui.md) |
 
 ---
 
@@ -39,7 +40,9 @@ src/
 │   └── dmAgent.ts       # Main DM agent flow
 ├── functions/
 │   ├── webhookHandler.ts  # Instagram webhook
-│   └── processMessage.ts  # Debounced message processor
+│   ├── processMessage.ts  # Debounced message processor
+│   ├── testChat.ts        # Test chat API endpoint
+│   └── testConversations.ts # Conversation management API
 ├── prompts/
 │   └── system.ts        # System prompt with club context
 ├── schemas/
@@ -48,7 +51,8 @@ src/
 │   ├── actionExecutor.ts  # Execute agent actions
 │   ├── debouncer.ts     # Message debouncing
 │   ├── instagram.ts     # Instagram API client
-│   └── whatsapp.ts      # WhatsApp API client
+│   ├── whatsapp.ts      # WhatsApp API client
+│   └── testRunner.ts    # Test mode agent runner
 ├── tools/
 │   ├── index.ts         # Tool registry
 │   ├── firestore.ts     # Firestore tools
@@ -61,6 +65,11 @@ src/
 │   ├── errorHandler.ts  # Error handling
 │   └── rateLimiter.ts   # Rate limiting
 └── index.ts             # Main entry point
+
+public/
+├── index.html           # Chat test UI
+├── styles.css           # Chat styling
+└── app.js               # Frontend JavaScript
 ```
 
 ---
@@ -135,3 +144,5 @@ PROCESS_MESSAGE_URL=
 - [ ] Instagram webhook connected
 - [ ] WhatsApp notifications working
 - [ ] End-to-end booking flow complete
+- [ ] Web test UI accessible and functional
+- [ ] Test conversations work without Instagram
