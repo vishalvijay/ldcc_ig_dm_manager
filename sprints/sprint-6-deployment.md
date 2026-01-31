@@ -41,6 +41,10 @@ Security hardening is complete (Sprint 4). This sprint focuses on Meta Developer
 - [ ] Create Firebase project (if not exists)
 - [ ] Enable Firestore
 - [ ] Enable Cloud Tasks API
+- [ ] Enable GCP APIs for GenKit monitoring:
+  ```bash
+  gcloud services enable logging.googleapis.com cloudtrace.googleapis.com monitoring.googleapis.com
+  ```
 - [ ] Deploy Firestore indexes (`firebase deploy --only firestore:indexes`)
 - [ ] Configure environment variables via Firebase Functions config
 - [ ] Set up service account permissions for Cloud Tasks

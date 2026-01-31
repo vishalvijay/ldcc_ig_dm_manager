@@ -1,15 +1,12 @@
-# Sprint 5: Testing, Monitoring & Observability
+# Sprint 5: End-to-End Testing
 
 ## Status: Pending
 
 ## Overview
-Sprint 4 implemented a tool-based architecture where the LLM directly calls tools to execute actions (Instagram messages, reactions, WhatsApp notifications). This eliminated the need for a separate action executor. Sprint 5 focuses on testing, monitoring, and production readiness.
+Sprint 4 implemented a tool-based architecture where the LLM directly calls tools to execute actions (Instagram messages, reactions, WhatsApp notifications). Sprint 5 focuses on end-to-end testing to validate the complete flow.
 
 ## Goals
 - End-to-end testing with Firebase emulator
-- Add observability and audit logging
-- Implement dead letter queue for failed messages
-- Performance optimization
 
 ## Completed Tasks (from Sprint 4)
 
@@ -32,46 +29,12 @@ Sprint 4 implemented a tool-based architecture where the LLM directly calls tool
 
 ## Remaining Tasks
 
-### 5.1 Audit & Observability
-- [ ] Create `src/services/auditLog.ts`
-- [ ] Log all tool executions to Firestore `auditLogs/{id}`
-- [ ] Track: action type, input, output, latency, errors
-- [ ] Add structured logging with correlation IDs
-
-### 5.2 Dead Letter Queue
-- [ ] Create Firestore collection `failedMessages/{id}`
-- [ ] Move messages to DLQ after 3 Cloud Tasks retries
-- [ ] Store: original message, error details, retry count
-- [ ] Admin function to replay DLQ messages
-
-### 5.3 End-to-End Testing
+### 5.1 End-to-End Testing
 - [ ] Test with Firebase emulator (`npm run serve`)
 - [ ] Mock Instagram webhook calls
 - [ ] Verify message debouncing (5-15s delay)
 - [ ] Verify agent responds correctly
 - [ ] Verify WhatsApp notifications sent
-
-### 5.4 Performance Monitoring
-- [ ] Add latency tracking to dmAgentFlow
-- [ ] Track token usage per conversation
-- [ ] Create Cloud Monitoring dashboard
-- [ ] Set up alerts for error rate > 1%
-
-## File Structure After Sprint
-```
-src/
-├── config/
-├── flows/
-├── functions/
-├── prompts/
-├── services/
-│   ├── auditLog.ts      # NEW: Action audit logging
-│   ├── instagram.ts
-│   └── messageStore.ts
-├── tools/
-├── types/
-└── index.ts
-```
 
 ## Architecture Note
 Sprint 4 adopted a tool-based approach where the LLM orchestrates all actions:
