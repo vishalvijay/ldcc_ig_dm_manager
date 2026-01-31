@@ -12,7 +12,12 @@ npm run lint:fix        # Auto-fix lint issues
 npm run serve           # Build and start Firebase emulators
 npm run deploy          # Deploy to Firebase Functions
 npm run genkit:dev      # Start GenKit dev UI with hot reload
+npm run genkit:flow:run # Run a specific GenKit flow
 ```
+
+## Testing Flows
+
+Use GenKit dev UI (`npm run genkit:dev`) to test the dmAgent flow interactively. The UI provides a visual interface to invoke flows with test inputs and inspect outputs.
 
 ## Architecture
 
@@ -48,6 +53,22 @@ Instagram Webhook → Firestore (store message) → Cloud Tasks (debounce)
 ### Message States
 
 Messages tracked in Firestore: `pending` → `processing` → `processed`
+
+## Key Files
+
+- `src/flows/dmAgent.ts` - Main GenKit flow that orchestrates LLM conversations
+- `src/prompts/system.ts` - System prompt with all club knowledge and behavioral guidelines
+- `src/tools/index.ts` - Tool registry combining MCP and local tools
+- `src/types/index.ts` - Zod schemas for structured output (AgentResponseSchema)
+- `src/config/genkit.ts` - GenKit/Gemini configuration
+
+## Structured Output
+
+The agent returns `AgentResponse` with multiple possible actions:
+- `sendMessage` - Reply to user
+- `reactToMessage` - React with emoji (love, like, etc.)
+- `notifyManager` - Alert human manager via WhatsApp
+- `noAction` - Skip response (duplicate/spam)
 
 ## Environment Variables
 
