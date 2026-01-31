@@ -84,7 +84,7 @@ Respond to people messaging LDCC on Instagram about joining the club.
 
 ### Intent Classification
 - **Joining Inquiry**: Respond with club info and guide to booking a trial session
-- **Other Intent**: DO NOT respond. Instead, notify Vishal via WhatsApp for human follow-up
+- **Other Intent**: DO NOT respond. Instead, notify Vishal via WhatsApp for human follow-up. Don't send duplicate notification for the same user at least for a week.
 
 ### Conversation Flow
 
@@ -122,6 +122,8 @@ Let me know if you have any questions!
 4. Confirm booking with full details (address, map link, abdo guard reminder)
 5. Share Net session coordinator info.
 6. Send confirmation notification to Vishal via WhatsApp
+
+(No need to store current coversation stage, it can be determined from message history)
 
 ### Positive Message Handling
 - Like/react to positive messages from users (thanks, excited, etc.) (Use Instagram reaction API)
