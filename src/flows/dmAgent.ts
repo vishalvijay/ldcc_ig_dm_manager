@@ -1,17 +1,14 @@
 /**
  * DM Agent Flow - Core LLM-powered conversation handler.
  *
- * Uses GenKit with Gemini to process Instagram DM conversations
- * and return structured actions.
+ * Uses GenKit with Gemini to process Instagram DM conversations.
+ * The LLM directly calls tools to execute actions (send messages, react, notify).
  */
 
 import { z } from "zod";
+import * as logger from "firebase-functions/logger";
 import { ai } from "../config/genkit";
 import { SYSTEM_PROMPT } from "../prompts/system";
-import {
-  AgentResponseSchema,
-  AgentResponse,
-} from "../types";
 import { getAllTools } from "../tools";
 
 /**
@@ -49,76 +46,128 @@ export const DmAgentInputSchema = z.object({
 export type DmAgentInput = z.infer<typeof DmAgentInputSchema>;
 
 /**
+ * Output schema for the DM Agent flow.
+ * Simple result indicating what actions were taken.
+ */
+export const DmAgentOutputSchema = z.object({
+  success: z.boolean().describe("Whether the agent completed successfully"),
+  thinking: z.string().optional().describe("Agent's reasoning about the response"),
+  actionsExecuted: z.array(z.string()).describe("List of action tool names that were called"),
+  error: z.string().optional().describe("Error message if failed"),
+});
+
+export type DmAgentOutput = z.infer<typeof DmAgentOutputSchema>;
+
+/**
+ * Build context string with IDs the agent needs for tool calls.
+ */
+function buildContextInfo(context: DmAgentInput): string {
+  const userInfo = context.sender.username
+    ? `@${context.sender.username}`
+    : context.sender.name || "Unknown";
+
+  return `
+## Current Context
+- User Instagram ID (use for sendInstagramMessage recipientId): ${context.sender.id}
+- User: ${userInfo}
+- Current Message ID (use for reactToInstagramMessage): ${context.currentMessage.id}
+- Conversation ID: ${context.conversationId}
+`;
+}
+
+/**
  * Main DM Agent flow.
  *
- * Processes conversation context and generates structured responses
- * using the LLM with club knowledge from the system prompt.
+ * Processes conversation context and executes actions via tool calls.
+ * The LLM decides what actions to take and calls tools directly.
  */
 export const dmAgentFlow = ai.defineFlow(
   {
     name: "dmAgent",
     inputSchema: DmAgentInputSchema,
-    outputSchema: AgentResponseSchema,
+    outputSchema: DmAgentOutputSchema,
   },
-  async (context: DmAgentInput): Promise<AgentResponse> => {
-    // Build message history for the LLM
-    // Include the current message in the conversation
-    const allMessages = [
-      ...context.messages,
-      {
-        role: "user" as const,
-        content: context.currentMessage.text,
-        timestamp: context.currentMessage.timestamp,
-        messageId: context.currentMessage.id,
-      },
-    ];
+  async (context: DmAgentInput): Promise<DmAgentOutput> => {
+    try {
+      // Build message history for the LLM
+      // Include the current message in the conversation
+      const allMessages = [
+        ...context.messages,
+        {
+          role: "user" as const,
+          content: context.currentMessage.text,
+          timestamp: context.currentMessage.timestamp,
+          messageId: context.currentMessage.id,
+        },
+      ];
 
-    // Format conversation for GenKit
-    // GenKit uses "model" instead of "assistant" for AI messages
-    const conversationHistory = allMessages.map((m) => ({
-      role: m.role === "assistant" ? ("model" as const) : ("user" as const),
-      content: [{ text: m.content }],
-    }));
+      // Format conversation for GenKit
+      // GenKit uses "model" instead of "assistant" for AI messages
+      const conversationHistory = allMessages.map((m) => ({
+        role: m.role === "assistant" ? ("model" as const) : ("user" as const),
+        content: [{ text: m.content }],
+      }));
 
-    // Add context about message type if not a simple text message
-    let additionalContext = "";
-    if (context.currentMessage.messageType === "story_mention") {
-      additionalContext =
-        "\n[Note: This message is a story mention - the user mentioned LDCC in their story]";
-    } else if (context.currentMessage.messageType === "story_reply") {
-      additionalContext =
-        "\n[Note: This message is a reply to an LDCC story]";
-    } else if (context.currentMessage.messageType === "image") {
-      additionalContext =
-        "\n[Note: This message contains an image - the text shown is any accompanying caption]";
-    }
+      // Add context about message type if not a simple text message
+      let messageTypeContext = "";
+      if (context.currentMessage.messageType === "story_mention") {
+        messageTypeContext =
+          "\n[Note: This message is a story mention - the user mentioned LDCC in their story]";
+      } else if (context.currentMessage.messageType === "story_reply") {
+        messageTypeContext =
+          "\n[Note: This message is a reply to an LDCC story]";
+      } else if (context.currentMessage.messageType === "image") {
+        messageTypeContext =
+          "\n[Note: This message contains an image - the text shown is any accompanying caption]";
+      }
 
-    // Get all available tools for the agent
-    const tools = await getAllTools(ai);
+      // Build the full system prompt with context
+      const contextInfo = buildContextInfo(context);
+      const fullSystemPrompt = SYSTEM_PROMPT + contextInfo + messageTypeContext;
 
-    // Generate structured response
-    const response = await ai.generate({
-      system: SYSTEM_PROMPT + additionalContext,
-      messages: conversationHistory,
-      tools,
-      output: { schema: AgentResponseSchema },
-    });
+      // Get all available tools for the agent
+      const tools = await getAllTools(ai);
 
-    // Ensure we have a valid output
-    if (!response.output) {
-      // Fallback response if parsing fails
+      logger.info("Invoking LLM with tools", {
+        conversationId: context.conversationId,
+        toolCount: tools.length,
+        messageCount: conversationHistory.length,
+      });
+
+      // Generate response - LLM will call tools directly
+      const response = await ai.generate({
+        system: fullSystemPrompt,
+        messages: conversationHistory,
+        tools,
+      });
+
+      // Track which tools were called
+      const toolCalls = response.toolRequests || [];
+      const actionsExecuted = toolCalls.map((tc) => tc.toolRequest.name);
+
+      logger.info("Agent completed", {
+        conversationId: context.conversationId,
+        actionsExecuted,
+        responseText: response.text?.substring(0, 100),
+      });
+
       return {
-        thinking: "Failed to generate structured response",
-        actions: [
-          {
-            type: "notifyManager",
-            reason: "Agent failed to generate response",
-            summary: `User ${context.sender.username || context.sender.id} sent: "${context.currentMessage.text}"`,
-          },
-        ],
+        success: true,
+        thinking: response.text || undefined,
+        actionsExecuted,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Agent flow failed", {
+        conversationId: context.conversationId,
+        error: errorMessage,
+      });
+
+      return {
+        success: false,
+        actionsExecuted: [],
+        error: errorMessage,
       };
     }
-
-    return response.output;
   }
 );

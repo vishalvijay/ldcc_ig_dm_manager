@@ -93,7 +93,12 @@ export type AgentResponse = z.infer<typeof AgentResponseSchema>;
 // Firestore Message State
 // =============================================================================
 
-export type MessageStatus = "pending" | "processing" | "processed" | "failed";
+export enum MessageStatus {
+  PENDING = "pending",
+  PROCESSING = "processing",
+  PROCESSED = "processed",
+  FAILED = "failed",
+}
 
 export interface StoredMessage {
   id: string;
@@ -103,5 +108,62 @@ export interface StoredMessage {
   createdAt: number;
   updatedAt: number;
   processedAt?: number;
+  error?: string;
+}
+
+// =============================================================================
+// Instagram Webhook Types
+// =============================================================================
+
+export interface InstagramWebhookMessage {
+  mid: string;
+  text?: string;
+  attachments?: Array<{
+    type: string;
+    payload: {
+      url?: string;
+      sticker_id?: number;
+    };
+  }>;
+  is_echo?: boolean;
+  reply_to?: {
+    mid: string;
+  };
+}
+
+export interface InstagramWebhookReaction {
+  mid: string;
+  action: "react" | "unreact";
+  reaction?: string;
+  emoji?: string;
+}
+
+export interface InstagramWebhookMessaging {
+  sender: { id: string };
+  recipient: { id: string };
+  timestamp: number;
+  message?: InstagramWebhookMessage;
+  reaction?: InstagramWebhookReaction;
+}
+
+export interface InstagramWebhookEntry {
+  id: string;
+  time: number;
+  messaging: InstagramWebhookMessaging[];
+}
+
+export interface InstagramWebhookPayload {
+  object: "instagram";
+  entry: InstagramWebhookEntry[];
+}
+
+// =============================================================================
+// Execution Result Types
+// =============================================================================
+
+export interface ExecutionResult {
+  action: AgentAction;
+  success: boolean;
+  messageId?: string;
   error?: string;
 }

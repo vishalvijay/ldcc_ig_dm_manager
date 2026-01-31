@@ -15,6 +15,8 @@ export * from "./types";
 // Export GenKit flows
 export { dmAgentFlow, DmAgentInputSchema } from "./flows/dmAgent";
 
-// Placeholder exports - functions will be added in future sprints
-// export { instagramWebhook } from "./functions/webhook";
-// export { processMessage } from "./functions/processMessage";
+// Export Instagram webhook functions
+export { instagramWebhookVerify, instagramWebhook } from "./functions/webhookHandler";
+
+// Export message processing function
+export { processMessage } from "./functions/processMessage";
