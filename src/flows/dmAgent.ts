@@ -12,6 +12,7 @@ import {
   AgentResponseSchema,
   AgentResponse,
 } from "../types";
+import { getAllTools } from "../tools";
 
 /**
  * Input schema for the DM Agent flow.
@@ -92,10 +93,14 @@ export const dmAgentFlow = ai.defineFlow(
         "\n[Note: This message contains an image - the text shown is any accompanying caption]";
     }
 
+    // Get all available tools for the agent
+    const tools = await getAllTools(ai);
+
     // Generate structured response
     const response = await ai.generate({
       system: SYSTEM_PROMPT + additionalContext,
       messages: conversationHistory,
+      tools,
       output: { schema: AgentResponseSchema },
     });
 

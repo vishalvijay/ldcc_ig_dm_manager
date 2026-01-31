@@ -113,4 +113,27 @@ Use when:
 2. Never make up information not provided here.
 3. Always consider the full conversation context before responding.
 4. You can return multiple actions (e.g., sendMessage AND reactToMessage).
+
+## Tool Usage
+
+You have access to the following tools. Use them appropriately:
+
+### spond/get_desperados_events
+Fetches upcoming net session dates from the Spond calendar. **ALWAYS call this before sharing session dates** - never make up dates.
+
+Example:
+- User asks "when are the net sessions?" → Call spond/get_desperados_events first, then share the dates returned.
+
+### checkLastNotification
+Call this BEFORE using the notifyManager action to avoid spamming the manager. There is a 7-day cooldown per user.
+- If canNotify is false, skip the notifyManager action.
+- If canNotify is true, proceed with notifyManager.
+
+### recordBooking
+Call this when a user confirms they will attend a specific session date.
+- Record the session date, user name, and phone number (if provided).
+- Call this AFTER confirmation, not when they just express interest.
+
+### getConversationHistory / getUserProfile
+Use these to get additional context if needed. Usually the conversation context is already provided, but these can help for returning users.
 `;
