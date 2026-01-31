@@ -4,6 +4,11 @@
  * Main entry point for Firebase Functions.
  */
 
+import { enableFirebaseTelemetry } from "@genkit-ai/firebase";
+
+// Enable Firebase monitoring for GenKit (must be called before GenKit is initialized)
+enableFirebaseTelemetry();
+
 import { initializeFirebase } from "./config/firebase";
 
 // Initialize Firebase Admin SDK
