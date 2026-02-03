@@ -2,7 +2,6 @@
  * Instagram Service - Graph API client for Instagram messaging.
  *
  * Handles sending messages, reactions, and fetching thread history.
- * Supports mock mode for local development.
  */
 
 import * as logger from "firebase-functions/logger";
@@ -43,13 +42,6 @@ interface UserProfileResponse extends GraphAPIError {
   id?: string;
   username?: string;
   name?: string;
-}
-
-/**
- * Check if mock mode is enabled.
- */
-function isMockMode(): boolean {
-  return process.env.MOCK_INSTAGRAM === "true";
 }
 
 /**
@@ -132,7 +124,7 @@ export class InstagramService {
     this.accessToken = process.env.INSTAGRAM_ACCESS_TOKEN || "";
     this.pageId = process.env.INSTAGRAM_PAGE_ID || "";
 
-    if (!isMockMode() && (!this.accessToken || !this.pageId)) {
+    if (!this.accessToken || !this.pageId) {
       logger.warn(
         "Instagram credentials not configured. Set INSTAGRAM_ACCESS_TOKEN and INSTAGRAM_PAGE_ID."
       );
@@ -147,16 +139,6 @@ export class InstagramService {
    * @returns The message ID of the sent message
    */
   async sendMessage(recipientId: string, text: string): Promise<string> {
-    if (isMockMode()) {
-      const mockId = `mock_msg_${Date.now()}`;
-      logger.info("MOCK: Sending Instagram message", {
-        recipientId,
-        text: text.substring(0, 100),
-        mockMessageId: mockId,
-      });
-      return mockId;
-    }
-
     const url = `${GRAPH_API_BASE}/${this.pageId}/messages`;
     const response = await fetchWithRetry(url, {
       method: "POST",
@@ -200,14 +182,6 @@ export class InstagramService {
     messageId: string,
     reaction: ReactToMessageAction["reaction"]
   ): Promise<void> {
-    if (isMockMode()) {
-      logger.info("MOCK: Sending Instagram reaction", {
-        messageId,
-        reaction,
-      });
-      return;
-    }
-
     const url = `${GRAPH_API_BASE}/${this.pageId}/messages`;
     const response = await fetchWithRetry(url, {
       method: "POST",
@@ -247,11 +221,6 @@ export class InstagramService {
     threadId: string,
     limit = 20
   ): Promise<InstagramMessage[]> {
-    if (isMockMode()) {
-      logger.info("MOCK: Fetching thread messages", { threadId, limit });
-      return [];
-    }
-
     const url = `${GRAPH_API_BASE}/${threadId}?fields=messages{id,message,from,created_time}&limit=${limit}`;
     const response = await fetchWithRetry(url, {
       method: "GET",
@@ -294,15 +263,6 @@ export class InstagramService {
    * @returns User profile data
    */
   async getUserProfile(userId: string): Promise<InstagramSender> {
-    if (isMockMode()) {
-      logger.info("MOCK: Fetching user profile", { userId });
-      return {
-        id: userId,
-        username: `mock_user_${userId.slice(-4)}`,
-        name: "Mock User",
-      };
-    }
-
     const url = `${GRAPH_API_BASE}/${userId}?fields=id,username,name`;
     const response = await fetchWithRetry(url, {
       method: "GET",

@@ -138,7 +138,7 @@ PROCESS_MESSAGE_URL=
 
 - [ ] GenKit dev UI accessible and flow testable
 - [ ] Firebase emulator runs all functions
-- [ ] Mock webhook triggers full flow
+- [ ] Test webhook triggers full flow
 - [ ] Spond MCP returns session data
 - [ ] Production deployment successful
 - [ ] Instagram webhook connected

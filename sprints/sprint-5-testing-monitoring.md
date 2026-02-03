@@ -12,7 +12,7 @@ Sprint 4 implemented a tool-based architecture where the LLM directly calls tool
 
 ### WhatsApp Integration
 - [x] `src/tools/whatsapp.ts` - `sendManagerNotification` tool
-- [x] WhatsApp Business API integration with mock mode
+- [x] WhatsApp Business API integration
 - [x] Priority-based notification formatting (🚨 high / 📩 normal / 📝 low)
 
 ### Action Execution (Tool-Based)
@@ -31,7 +31,7 @@ Sprint 4 implemented a tool-based architecture where the LLM directly calls tool
 
 ### 5.1 End-to-End Testing
 - [ ] Test with Firebase emulator (`npm run serve`)
-- [ ] Mock Instagram webhook calls
+- [ ] Send test Instagram webhook calls
 - [ ] Verify message debouncing (5-15s delay)
 - [ ] Verify agent responds correctly
 - [ ] Verify WhatsApp notifications sent

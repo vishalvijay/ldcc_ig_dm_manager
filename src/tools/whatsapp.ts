@@ -28,31 +28,18 @@ interface WhatsAppSendResponse extends WhatsAppAPIError {
 }
 
 /**
- * Check if WhatsApp mock mode is enabled.
- */
-function isWhatsAppMockMode(): boolean {
-  return (
-    process.env.MOCK_WHATSAPP === "true" ||
-    !WHATSAPP_ACCESS_TOKEN ||
-    !WHATSAPP_PHONE_NUMBER_ID
-  );
-}
-
-/**
  * Send a WhatsApp message.
  */
 async function sendWhatsAppMessage(
   to: string,
   message: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  if (isWhatsAppMockMode()) {
-    const mockId = `mock_wa_${Date.now()}`;
-    logger.info("MOCK: Sending WhatsApp message", {
-      to,
-      message: message.substring(0, 100),
-      mockMessageId: mockId,
-    });
-    return { success: true, messageId: mockId };
+  if (!WHATSAPP_ACCESS_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
+    logger.warn("WhatsApp credentials not configured");
+    return {
+      success: false,
+      error: "WhatsApp credentials not configured",
+    };
   }
 
   try {

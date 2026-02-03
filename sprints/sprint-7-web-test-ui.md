@@ -85,7 +85,7 @@ Response:
     {
       "tool": "sendInstagramMessage",
       "input": { "recipientId": "test-user", "text": "Welcome..." },
-      "output": { "success": true, "messageId": "mock_123" }
+      "output": { "success": true, "messageId": "msg_123456789" }
     }
   ],
   "processingTimeMs": 1234
@@ -156,10 +156,9 @@ public/
 ## Technical Notes
 
 ### Test Mode vs Production
-- Test mode uses mock sender ID (`test-user-{id}`) and simplified context
+- Test mode uses test sender ID (`test-user-{id}`) and simplified context
 - Same dmAgentFlow processes messages
 - Tools still work (Spond MCP, Firestore)
-- Instagram/WhatsApp tools operate in mock mode (`MOCK_INSTAGRAM=true`, `MOCK_WHATSAPP=true`)
 - All tool calls are logged and returned in response for debugging
 
 ### Frontend Stack
@@ -172,4 +171,3 @@ public/
 - No additional npm packages required
 - Uses existing Firebase Functions infrastructure
 - Leverages dmAgentFlow from Sprint 2
-- Mock mode for Instagram/WhatsApp services

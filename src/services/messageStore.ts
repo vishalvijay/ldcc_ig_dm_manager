@@ -31,17 +31,6 @@ const PROCESS_MESSAGE_URL = process.env.PROCESS_MESSAGE_URL || "";
 const CLOUD_TASKS_SERVICE_ACCOUNT = PROJECT_ID ? `${PROJECT_ID}@appspot.gserviceaccount.com` : "";
 
 /**
- * Check if Cloud Tasks mock mode is enabled.
- */
-function isCloudTasksMockMode(): boolean {
-  return (
-    process.env.MOCK_CLOUD_TASKS === "true" ||
-    !PROJECT_ID ||
-    !PROCESS_MESSAGE_URL
-  );
-}
-
-/**
  * Generate a random delay between MIN and MAX seconds.
  */
 function getRandomDelay(): number {
@@ -102,15 +91,6 @@ export async function scheduleProcessing(
   messageId: string
 ): Promise<void> {
   const delaySeconds = getRandomDelay();
-
-  if (isCloudTasksMockMode()) {
-    logger.info("MOCK: Would schedule Cloud Task", {
-      threadId,
-      messageId,
-      delaySeconds,
-    });
-    return;
-  }
 
   const client = new CloudTasksClient();
   const parent = client.queuePath(PROJECT_ID, LOCATION, QUEUE_NAME);

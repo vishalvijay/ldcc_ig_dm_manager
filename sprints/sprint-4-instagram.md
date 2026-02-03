@@ -7,7 +7,6 @@
 - Create webhook handler for incoming DMs
 - Implement Cloud Tasks scheduling with message batching
 - Ensure sequential processing per user (concurrency = 1)
-- Use mock services for local testing
 
 ## Completed Tasks
 
@@ -19,7 +18,6 @@
 - [x] Implement getUserProfile(userId)
 - [x] Handle rate limiting with exponential backoff
 - [x] Retry logic (3 attempts)
-- [x] Mock mode via `MOCK_INSTAGRAM=true`
 
 ### 4.2 Instagram Tools (Action-based)
 - [x] Update `src/tools/instagram.ts` with action tools
@@ -31,7 +29,6 @@
 ### 4.3 WhatsApp Tools
 - [x] Update `src/tools/whatsapp.ts` with implementation
 - [x] `sendManagerNotification` - notify manager via WhatsApp
-- [x] Mock mode support
 
 ### 4.4 Webhook Handler
 - [x] Create `src/functions/webhookHandler.ts`
@@ -181,9 +178,6 @@ src/
 | `MANAGER_WHATSAPP_NUMBER` | Manager's WhatsApp |
 | `PROCESS_MESSAGE_URL` | Cloud Tasks callback URL |
 | `CLOUD_TASKS_QUEUE` | Queue name (default: dm-processing) |
-| `MOCK_INSTAGRAM` | Enable Instagram mock mode |
-| `MOCK_WHATSAPP` | Enable WhatsApp mock mode |
-| `MOCK_CLOUD_TASKS` | Enable Cloud Tasks mock mode |
 
 ## Verification
 ```bash

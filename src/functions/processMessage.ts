@@ -41,9 +41,9 @@ interface ProcessMessagePayload {
  * Returns true if valid, false otherwise.
  */
 async function validateOidcToken(authHeader: string | undefined): Promise<boolean> {
-  // Skip validation in emulator/development mode
-  if (process.env.FUNCTIONS_EMULATOR === "true" || process.env.MOCK_CLOUD_TASKS === "true") {
-    logger.debug("Skipping OIDC validation in development mode");
+  // Skip validation in emulator mode (local development)
+  if (process.env.FUNCTIONS_EMULATOR === "true") {
+    logger.debug("Skipping OIDC validation in emulator mode");
     return true;
   }
 
