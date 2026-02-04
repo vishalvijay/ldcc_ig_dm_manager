@@ -84,10 +84,14 @@ Required in `.env` or Firebase config:
 
 ## Deployment
 
+Functions deploy to `europe-west2` region by default (configurable via `CLOUD_FUNCTIONS_REGION` env var).
+
 ```bash
 npm run deploy                              # Deploy functions
 firebase deploy --only firestore:indexes   # Deploy Firestore indexes (required for queries)
 ```
+
+CI/CD: Pushing to `main` branch triggers automatic deployment via GitHub Actions (`.github/workflows/deploy-firebase.yml`).
 
 ## Domain Context
 
