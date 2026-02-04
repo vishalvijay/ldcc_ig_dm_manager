@@ -12,6 +12,7 @@ import { Genkit, ToolAction } from "genkit";
 const WHATSAPP_ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN || "";
 const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID || "";
 const MANAGER_WHATSAPP_NUMBER = process.env.MANAGER_WHATSAPP_NUMBER || "";
+const NET_SESSION_COORDINATOR = process.env.NET_SESSION_COORDINATOR || "Adarsh";
 
 // WhatsApp API response types
 interface WhatsAppAPIError {
@@ -27,12 +28,18 @@ interface WhatsAppSendResponse extends WhatsAppAPIError {
   }>;
 }
 
+// Template name for manager notifications (must be approved in Meta Business Suite)
+const WHATSAPP_BOOKING_TEMPLATE = process.env.WHATSAPP_BOOKING_TEMPLATE || "hello_world";
+const WHATSAPP_ESCALATION_TEMPLATE = process.env.WHATSAPP_ESCALATION_TEMPLATE || "hello_world";
+
 /**
- * Send a WhatsApp message.
+ * Send a WhatsApp template message.
+ * Templates are required to initiate conversations outside the 24-hour window.
  */
-async function sendWhatsAppMessage(
+async function sendWhatsAppTemplateMessage(
   to: string,
-  message: string
+  templateName: string,
+  templateParams: string[]
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   if (!WHATSAPP_ACCESS_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
     logger.warn("WhatsApp credentials not configured");
@@ -44,6 +51,13 @@ async function sendWhatsAppMessage(
 
   try {
     const url = `https://graph.facebook.com/v22.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`;
+
+    // Build template components with parameters
+    const components = templateParams.length > 0 ? [{
+      type: "body",
+      parameters: templateParams.map(text => ({ type: "text", text })),
+    }] : [];
+
     const response = await fetch(url, {
       method: "POST",
       headers: {
@@ -53,14 +67,18 @@ async function sendWhatsAppMessage(
       body: JSON.stringify({
         messaging_product: "whatsapp",
         to,
-        type: "text",
-        text: { body: message },
+        type: "template",
+        template: {
+          name: templateName,
+          language: { code: "en_US" },
+          ...(components.length > 0 && { components }),
+        },
       }),
     });
 
     if (!response.ok) {
       const errorData = (await response.json()) as WhatsAppAPIError;
-      logger.error("Failed to send WhatsApp message", {
+      logger.error("Failed to send WhatsApp template message", {
         status: response.status,
         error: errorData,
       });
@@ -71,8 +89,9 @@ async function sendWhatsAppMessage(
     }
 
     const data = (await response.json()) as WhatsAppSendResponse;
-    logger.info("Sent WhatsApp message", {
+    logger.info("Sent WhatsApp template message", {
       to,
+      templateName,
       messageId: data.messages?.[0]?.id,
     });
 
@@ -88,19 +107,25 @@ async function sendWhatsAppMessage(
 // Schema Definitions
 // =============================================================================
 
-const SendManagerNotificationInputSchema = z.object({
-  reason: z.string().describe("Brief reason for the notification"),
+const NotifyBookingInputSchema = z.object({
+  username: z.string().describe("Instagram username of the person who booked"),
+  sessionDate: z.string().describe("The net session date they confirmed (e.g., 'Saturday 15th Feb 2pm')"),
+  userPhone: z.string().optional().describe("User's phone number if provided"),
+  userName: z.string().optional().describe("User's real name if provided"),
+});
+
+const EscalateToManagerInputSchema = z.object({
+  reason: z.string().describe("Brief reason for escalation (e.g., 'Sponsorship inquiry', 'Complaint', 'Media request')"),
   summary: z.string().describe("Summary of the conversation for manager context"),
-  userId: z.string().describe("Instagram user ID of the person being discussed"),
-  username: z.string().optional().describe("Instagram username if known"),
+  username: z.string().describe("Instagram username of the person"),
   priority: z
     .enum(["low", "normal", "high"])
     .optional()
     .default("normal")
-    .describe("Priority level of the notification"),
+    .describe("Priority level: high for urgent/complaints, normal for general inquiries, low for FYI"),
 });
 
-const SendManagerNotificationOutputSchema = z.object({
+const WhatsAppOutputSchema = z.object({
   success: z.boolean(),
   messageId: z.string().optional().describe("WhatsApp message ID if sent successfully"),
   error: z.string().optional().describe("Error message if failed"),
@@ -114,38 +139,59 @@ const SendManagerNotificationOutputSchema = z.object({
  * Define WhatsApp tools for the GenKit AI instance.
  */
 export function defineWhatsAppTools(ai: Genkit): ToolAction[] {
-  const sendManagerNotification = ai.defineTool(
+  /**
+   * Notify manager about a confirmed booking.
+   */
+  const notifyBookingConfirmed = ai.defineTool(
     {
-      name: "sendManagerNotification",
+      name: "notifyBookingConfirmed",
       description:
-        "Send a WhatsApp notification to the manager (Vishal) about an inquiry that needs attention. Use this for: non-joining inquiries, confirmed session bookings that need follow-up, unusual situations, or when you need human intervention.",
-      inputSchema: SendManagerNotificationInputSchema,
-      outputSchema: SendManagerNotificationOutputSchema,
+        "Send a WhatsApp notification to the manager when a user confirms attendance at a net session. Use this after recording the booking.",
+      inputSchema: NotifyBookingInputSchema,
+      outputSchema: WhatsAppOutputSchema,
     },
     async (input) => {
       if (!MANAGER_WHATSAPP_NUMBER) {
         logger.warn("Manager WhatsApp number not configured");
-        return {
-          success: false,
-          error: "Manager WhatsApp number not configured",
-        };
+        return { success: false, error: "Manager WhatsApp number not configured" };
       }
 
-      // Format the notification message
-      const priorityEmoji = input.priority === "high" ? "🚨" : input.priority === "low" ? "📝" : "📩";
-      const userInfo = input.username ? `@${input.username}` : `User ID: ${input.userId}`;
+      const displayName = input.userName || `@${input.username}`;
+      const contact = input.userPhone || "Not provided";
 
-      const message = `${priorityEmoji} LDCC DM Alert
-
-Reason: ${input.reason}
-
-From: ${userInfo}
-
-Summary: ${input.summary}`;
-
-      return sendWhatsAppMessage(MANAGER_WHATSAPP_NUMBER, message);
+      // Template params: name, session date, contact, coordinator
+      return sendWhatsAppTemplateMessage(MANAGER_WHATSAPP_NUMBER, WHATSAPP_BOOKING_TEMPLATE, [
+        displayName,
+        input.sessionDate,
+        contact,
+        NET_SESSION_COORDINATOR,
+      ]);
     }
   );
 
-  return [sendManagerNotification];
+  /**
+   * Escalate to manager for non-joining inquiries or issues.
+   */
+  const escalateToManager = ai.defineTool(
+    {
+      name: "escalateToManager",
+      description:
+        "Escalate a conversation to the manager for non-joining inquiries (sponsorship, merchandise, complaints, media requests) or unusual situations that need human attention. Do NOT respond to the user - just escalate.",
+      inputSchema: EscalateToManagerInputSchema,
+      outputSchema: WhatsAppOutputSchema,
+    },
+    async (input) => {
+      if (!MANAGER_WHATSAPP_NUMBER) {
+        logger.warn("Manager WhatsApp number not configured");
+        return { success: false, error: "Manager WhatsApp number not configured" };
+      }
+
+      // Template params: username only (keeping it simple to avoid delivery failures)
+      return sendWhatsAppTemplateMessage(MANAGER_WHATSAPP_NUMBER, WHATSAPP_ESCALATION_TEMPLATE, [
+        input.username,
+      ]);
+    }
+  );
+
+  return [notifyBookingConfirmed, escalateToManager];
 }
