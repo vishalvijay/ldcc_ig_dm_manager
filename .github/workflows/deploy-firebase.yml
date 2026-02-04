@@ -36,7 +36,13 @@ jobs:
           echo "WHATSAPP_ACCESS_TOKEN=${{ secrets.WHATSAPP_ACCESS_TOKEN }}" >> .env
           echo "WHATSAPP_PHONE_NUMBER_ID=${{ vars.WHATSAPP_PHONE_NUMBER_ID }}" >> .env
           echo "MANAGER_WHATSAPP_NUMBER=${{ vars.MANAGER_WHATSAPP_NUMBER }}" >> .env
+          echo "WHATSAPP_BOOKING_TEMPLATE=${{ vars.WHATSAPP_BOOKING_TEMPLATE }}" >> .env
+          echo "WHATSAPP_ESCALATION_TEMPLATE=${{ vars.WHATSAPP_ESCALATION_TEMPLATE }}" >> .env
+          echo "NET_SESSION_COORDINATOR=${{ vars.NET_SESSION_COORDINATOR }}" >> .env
           echo "PROCESS_MESSAGE_URL=${{ vars.PROCESS_MESSAGE_URL }}" >> .env
+          echo "CLOUD_TASKS_QUEUE=${{ vars.CLOUD_TASKS_QUEUE }}" >> .env
+          echo "CLOUD_FUNCTIONS_REGION=${{ vars.CLOUD_FUNCTIONS_REGION }}" >> .env
+          echo "ENABLE_FIREBASE_MONITORING=${{ vars.ENABLE_FIREBASE_MONITORING }}" >> .env
 
       - name: Deploy Cloud Functions
         run: firebase deploy --only functions --project ${{ vars.FIREBASE_PROJECT_ID }} --force
