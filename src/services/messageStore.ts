@@ -24,7 +24,7 @@ const MAX_DELAY_SECONDS = 15;
 
 // Cloud Tasks configuration
 const PROJECT_ID = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || "";
-const LOCATION = process.env.FUNCTION_REGION || "us-central1";
+const LOCATION = process.env.CLOUD_FUNCTIONS_REGION || "us-central1";
 const QUEUE_NAME = process.env.CLOUD_TASKS_QUEUE || "dm-processing";
 const PROCESS_MESSAGE_URL = process.env.PROCESS_MESSAGE_URL || "";
 // Default Firebase service account: {PROJECT_ID}@appspot.gserviceaccount.com
