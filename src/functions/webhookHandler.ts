@@ -13,6 +13,7 @@ import {
   InstagramMessage,
 } from "../types";
 import { storeMessage, scheduleProcessing } from "../services/messageStore";
+import { REGION } from "../config";
 
 // Environment variables
 const INSTAGRAM_VERIFY_TOKEN = process.env.INSTAGRAM_VERIFY_TOKEN || "";
@@ -126,7 +127,7 @@ function shouldProcessMessage(messaging: InstagramWebhookMessaging): boolean {
  */
 export const instagramWebhookVerify = onRequest(
   {
-    region: "europe-west2",
+    region: REGION,
     cors: false,
   },
   async (req, res) => {
@@ -161,7 +162,7 @@ export const instagramWebhookVerify = onRequest(
  */
 export const instagramWebhook = onRequest(
   {
-    region: "europe-west2",
+    region: REGION,
     cors: false,
   },
   async (req, res) => {

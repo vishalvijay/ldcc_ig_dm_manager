@@ -18,6 +18,7 @@ import {
   markProcessedAndCheckPending,
   scheduleProcessing,
 } from "../services/messageStore";
+import { REGION } from "../config";
 import { getInstagramService } from "../services/instagram";
 import { dmAgentFlow, DmAgentInput } from "../flows/dmAgent";
 import { ConversationMessage, StoredMessage, MessageStatus } from "../types";
@@ -116,7 +117,7 @@ function buildConversationHistory(
  */
 export const processMessage = onRequest(
   {
-    region: "europe-west2",
+    region: REGION,
     cors: false,
     timeoutSeconds: 120,
     memory: "512MiB",
