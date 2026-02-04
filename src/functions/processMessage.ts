@@ -116,7 +116,7 @@ function buildConversationHistory(
  */
 export const processMessage = onRequest(
   {
-    region: "us-central1",
+    region: "europe-west2",
     cors: false,
     timeoutSeconds: 120,
     memory: "512MiB",

@@ -126,7 +126,7 @@ function shouldProcessMessage(messaging: InstagramWebhookMessaging): boolean {
  */
 export const instagramWebhookVerify = onRequest(
   {
-    region: "us-central1",
+    region: "europe-west2",
     cors: false,
   },
   async (req, res) => {
@@ -161,7 +161,7 @@ export const instagramWebhookVerify = onRequest(
  */
 export const instagramWebhook = onRequest(
   {
-    region: "us-central1",
+    region: "europe-west2",
     cors: false,
   },
   async (req, res) => {
