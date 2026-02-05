@@ -248,6 +248,12 @@ export const instagramWebhook = onRequest(
       typeof req.body === "string" ? req.body : JSON.stringify(req.body);
     const signature = req.headers["x-hub-signature-256"] as string | undefined;
 
+    // Log request headers and rawBody for debugging
+    logger.debug("Webhook request details", {
+      headers: JSON.stringify(req.headers),
+      rawBody,
+    });
+
     // Validate signature (skip in emulator/development)
     if (
       INSTAGRAM_APP_SECRET &&
