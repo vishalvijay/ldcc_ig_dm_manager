@@ -1,7 +1,7 @@
 {
   "functions": {
     "source": ".",
-    "runtime": "nodejs24",
+    "runtime": "nodejs22",
     "predeploy": ["npm run lint", "npm run build"]
   },
   "firestore": {
