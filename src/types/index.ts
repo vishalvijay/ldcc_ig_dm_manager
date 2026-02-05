@@ -10,7 +10,18 @@ export interface InstagramMessage {
   recipientId: string;
   text: string;
   timestamp: number;
-  messageType: "text" | "image" | "story_mention" | "story_reply" | "other";
+  messageType:
+    | "text"
+    | "image"
+    | "video"
+    | "audio"
+    | "file"
+    | "share"
+    | "story_mention"
+    | "story_reply"
+    | "reel"
+    | "ig_reel"
+    | "other";
   /** Reference to the message being replied to, if any */
   replyToMessageId?: string;
 }
@@ -115,19 +126,35 @@ export interface StoredMessage {
 // Instagram Webhook Types
 // =============================================================================
 
+export interface InstagramWebhookAttachment {
+  type:
+    | "image"
+    | "video"
+    | "audio"
+    | "file"
+    | "share"
+    | "story_mention"
+    | "story_reply"
+    | "reel"
+    | "ig_reel";
+  payload: {
+    url?: string;
+    sticker_id?: number;
+    reel_video_id?: string;
+    title?: string;
+  };
+}
+
 export interface InstagramWebhookMessage {
   mid: string;
   text?: string;
-  attachments?: Array<{
-    type: string;
-    payload: {
-      url?: string;
-      sticker_id?: number;
-    };
-  }>;
+  attachments?: InstagramWebhookAttachment[];
   is_echo?: boolean;
   reply_to?: {
     mid: string;
+  };
+  quick_reply?: {
+    payload: string;
   };
 }
 
@@ -138,12 +165,32 @@ export interface InstagramWebhookReaction {
   emoji?: string;
 }
 
+export interface InstagramWebhookRead {
+  watermark: number;
+}
+
+export interface InstagramWebhookPostback {
+  mid: string;
+  title: string;
+  payload: string;
+}
+
+export interface InstagramWebhookReferral {
+  ref?: string;
+  source?: string;
+  type?: string;
+  ad_id?: string;
+}
+
 export interface InstagramWebhookMessaging {
   sender: { id: string };
   recipient: { id: string };
   timestamp: number;
   message?: InstagramWebhookMessage;
   reaction?: InstagramWebhookReaction;
+  read?: InstagramWebhookRead;
+  postback?: InstagramWebhookPostback;
+  referral?: InstagramWebhookReferral;
 }
 
 export interface InstagramWebhookEntry {

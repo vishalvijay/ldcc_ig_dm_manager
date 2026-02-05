@@ -10,6 +10,7 @@ import { onRequest } from "firebase-functions/v2/https";
 import {
   InstagramWebhookPayload,
   InstagramWebhookMessaging,
+  InstagramWebhookAttachment,
   InstagramMessage,
 } from "../types";
 import { storeMessage, scheduleProcessing } from "../services/messageStore";
@@ -58,11 +59,32 @@ function getMessageType(
 ): InstagramMessage["messageType"] {
   if (!message) return "other";
 
-  if (message.attachments) {
+  if (message.attachments && message.attachments.length > 0) {
     const firstAttachment = message.attachments[0];
-    if (firstAttachment?.type === "story_mention") return "story_mention";
-    if (firstAttachment?.type === "story_reply") return "story_reply";
-    if (firstAttachment?.type === "image") return "image";
+    const attachmentType = firstAttachment?.type as InstagramWebhookAttachment["type"];
+
+    switch (attachmentType) {
+      case "story_mention":
+        return "story_mention";
+      case "story_reply":
+        return "story_reply";
+      case "image":
+        return "image";
+      case "video":
+        return "video";
+      case "audio":
+        return "audio";
+      case "file":
+        return "file";
+      case "share":
+        return "share";
+      case "reel":
+        return "reel";
+      case "ig_reel":
+        return "ig_reel";
+      default:
+        return "other";
+    }
   }
 
   if (message.text) return "text";
@@ -90,7 +112,7 @@ function transformToInstagramMessage(
 
 /**
  * Check if this message should be processed.
- * Filters out echoes, reactions, and messages from our page.
+ * Filters out echoes, reactions, read receipts, and messages from our page.
  */
 function shouldProcessMessage(messaging: InstagramWebhookMessaging): boolean {
   // Skip echo messages (sent by us)
@@ -103,6 +125,31 @@ function shouldProcessMessage(messaging: InstagramWebhookMessaging): boolean {
   if (messaging.reaction) {
     logger.debug("Skipping reaction event");
     return false;
+  }
+
+  // Skip read receipt events
+  if (messaging.read) {
+    logger.debug("Skipping read receipt event");
+    return false;
+  }
+
+  // Skip postback events (button clicks) - log for now
+  if (messaging.postback) {
+    logger.info("Received postback event", {
+      title: messaging.postback.title,
+      payload: messaging.postback.payload,
+    });
+    return false;
+  }
+
+  // Log referral events but don't skip if there's also a message
+  if (messaging.referral) {
+    logger.info("Received referral event", {
+      source: messaging.referral.source,
+      type: messaging.referral.type,
+      ref: messaging.referral.ref,
+    });
+    // Continue processing if there's a message attached
   }
 
   // Skip if no message content
