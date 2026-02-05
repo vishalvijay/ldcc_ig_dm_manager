@@ -280,11 +280,6 @@ export const instagramWebhook = onRequest(
       return;
     }
 
-    // Log full payload for debugging
-    logger.debug("Received webhook payload", {
-      payload: JSON.stringify(payload),
-    });
-
     // Validate this is an Instagram webhook
     if (payload.object !== "instagram") {
       logger.info("Ignoring non-Instagram webhook", { object: payload.object });
