@@ -20,8 +20,8 @@ export * from "./types";
 // Export GenKit flows
 export { dmAgentFlow, DmAgentInputSchema } from "./flows/dmAgent";
 
-// Export Instagram webhook functions
-export { instagramWebhookVerify, instagramWebhook } from "./functions/webhookHandler";
+// Export Instagram webhook function
+export { instagramWebhook } from "./functions/webhookHandler";
 
 // Export message processing function
 export { processMessage } from "./functions/processMessage";

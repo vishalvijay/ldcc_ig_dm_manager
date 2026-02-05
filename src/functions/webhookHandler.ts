@@ -1,7 +1,7 @@
 /**
- * Instagram Webhook Handlers - GET (verification) and POST (messages).
+ * Instagram Webhook Handler.
  *
- * Handles webhook verification and incoming Instagram messages.
+ * Single endpoint handling both GET (verification) and POST (messages).
  */
 
 import * as crypto from "crypto";
@@ -120,45 +120,11 @@ function shouldProcessMessage(messaging: InstagramWebhookMessaging): boolean {
 }
 
 /**
- * Instagram Webhook Verification (GET request).
+ * Instagram Webhook Handler.
  *
- * Facebook/Instagram sends a GET request to verify the webhook URL.
- * Must return the hub.challenge value if verification token matches.
- */
-export const instagramWebhookVerify = onRequest(
-  {
-    region: REGION,
-    cors: false,
-  },
-  async (req, res) => {
-    const mode = req.query["hub.mode"];
-    const token = req.query["hub.verify_token"];
-    const challenge = req.query["hub.challenge"];
-
-    logger.info("Webhook verification request", {
-      mode,
-      tokenReceived: !!token,
-      challenge: !!challenge,
-    });
-
-    if (mode === "subscribe" && token === INSTAGRAM_VERIFY_TOKEN) {
-      logger.info("Webhook verified successfully");
-      res.status(200).send(challenge);
-    } else {
-      logger.warn("Webhook verification failed", {
-        modeMatch: mode === "subscribe",
-        tokenMatch: token === INSTAGRAM_VERIFY_TOKEN,
-      });
-      res.status(403).send("Forbidden");
-    }
-  }
-);
-
-/**
- * Instagram Webhook Handler (POST request).
- *
- * Receives incoming messages and reactions from Instagram.
- * Stores messages in Firestore and schedules processing.
+ * Handles both:
+ * - GET requests: Webhook verification (Facebook sends hub.challenge)
+ * - POST requests: Incoming messages and events from Instagram
  */
 export const instagramWebhook = onRequest(
   {
@@ -166,7 +132,32 @@ export const instagramWebhook = onRequest(
     cors: false,
   },
   async (req, res) => {
-    // Validate request method
+    // Handle GET requests for webhook verification
+    if (req.method === "GET") {
+      const mode = req.query["hub.mode"];
+      const token = req.query["hub.verify_token"];
+      const challenge = req.query["hub.challenge"];
+
+      logger.info("Webhook verification request", {
+        mode,
+        tokenReceived: !!token,
+        challenge: !!challenge,
+      });
+
+      if (mode === "subscribe" && token === INSTAGRAM_VERIFY_TOKEN) {
+        logger.info("Webhook verified successfully");
+        res.status(200).send(challenge);
+      } else {
+        logger.warn("Webhook verification failed", {
+          modeMatch: mode === "subscribe",
+          tokenMatch: token === INSTAGRAM_VERIFY_TOKEN,
+        });
+        res.status(403).send("Forbidden");
+      }
+      return;
+    }
+
+    // Validate request method for non-GET
     if (req.method !== "POST") {
       res.status(405).send("Method not allowed");
       return;
