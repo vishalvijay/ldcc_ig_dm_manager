@@ -86,6 +86,9 @@ Required in `.env` or Firebase config:
 - `PROCESS_MESSAGE_URL` - Cloud Tasks callback URL (for OIDC audience validation)
 - `CLOUD_TASKS_QUEUE` - Cloud Tasks queue name
 
+Optional:
+- `TEST_MODE_USERNAME` - When set, only accept messages from this Instagram username (for testing)
+
 ## Deployment
 
 Functions deploy to `europe-west2` region by default (configurable via `CLOUD_FUNCTIONS_REGION` env var).

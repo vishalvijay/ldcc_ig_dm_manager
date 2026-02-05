@@ -13,7 +13,8 @@ import {
   InstagramMessage,
 } from "../types";
 import { storeMessage, scheduleProcessing } from "../services/messageStore";
-import { REGION } from "../config";
+import { getInstagramService } from "../services/instagram";
+import { REGION, TEST_MODE_USERNAME } from "../config";
 
 // Environment variables
 const INSTAGRAM_VERIFY_TOKEN = process.env.INSTAGRAM_VERIFY_TOKEN || "";
@@ -120,6 +121,38 @@ function shouldProcessMessage(messaging: InstagramWebhookMessaging): boolean {
 }
 
 /**
+ * Check if sender is allowed in test mode.
+ * Returns true if test mode is disabled or if the sender's username matches.
+ */
+async function isAllowedInTestMode(senderId: string): Promise<boolean> {
+  if (!TEST_MODE_USERNAME) {
+    return true;
+  }
+
+  try {
+    const instagram = getInstagramService();
+    const profile = await instagram.getUserProfile(senderId);
+    const allowed = profile.username === TEST_MODE_USERNAME;
+
+    if (!allowed) {
+      logger.info("Test mode: skipping message from non-allowed user", {
+        senderId,
+        username: profile.username,
+        allowedUsername: TEST_MODE_USERNAME,
+      });
+    }
+
+    return allowed;
+  } catch (error) {
+    logger.warn("Test mode: could not verify username, skipping message", {
+      senderId,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+    return false;
+  }
+}
+
+/**
  * Instagram Webhook Handler.
  *
  * Handles both:
@@ -218,6 +251,11 @@ export const instagramWebhook = onRequest(
 
         // Use sender ID as thread ID for Instagram DMs
         const threadId = messaging.sender.id;
+
+        // Check test mode filter
+        if (!(await isAllowedInTestMode(threadId))) {
+          continue;
+        }
 
         logger.info("Processing incoming message", {
           messageId: message.id,

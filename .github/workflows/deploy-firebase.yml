@@ -13,7 +13,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - run: npm ci
@@ -43,6 +43,7 @@ jobs:
           echo "CLOUD_TASKS_QUEUE=${{ vars.CLOUD_TASKS_QUEUE }}" >> .env
           echo "CLOUD_FUNCTIONS_REGION=${{ vars.CLOUD_FUNCTIONS_REGION }}" >> .env
           echo "ENABLE_FIREBASE_MONITORING=${{ vars.ENABLE_FIREBASE_MONITORING }}" >> .env
+          echo "TEST_MODE_USERNAME=${{ vars.TEST_MODE_USERNAME }}" >> .env
 
       - name: Deploy Cloud Functions
         run: firebase deploy --only functions --project ${{ vars.FIREBASE_PROJECT_ID }} --force
