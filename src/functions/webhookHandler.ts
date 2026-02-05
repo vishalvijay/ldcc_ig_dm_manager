@@ -302,14 +302,6 @@ export const instagramWebhook = onRequest(
       for (const messaging of entry.messaging || []) {
         // Check if we should process this message
         if (!shouldProcessMessage(messaging)) {
-          logger.debug("Skipping messaging event", {
-            senderId: messaging.sender?.id,
-            hasMessage: !!messaging.message,
-            isEcho: messaging.message?.is_echo,
-            hasReaction: !!messaging.reaction,
-            hasRead: !!messaging.read,
-            hasPostback: !!messaging.postback,
-          });
           continue;
         }
 
