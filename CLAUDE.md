@@ -65,6 +65,7 @@ Messages tracked in Firestore: `pending` → `processing` → `processed` (or `f
 
 - `src/flows/dmAgent.ts` - Main GenKit flow with LLM and tool orchestration
 - `src/prompts/system.ts` - System prompt with club knowledge and behavioral guidelines
+- `src/config.ts` - Environment variable configuration and validation
 - `src/tools/index.ts` - Tool registry combining MCP and local tools
 - `src/tools/*.ts` - Individual tool definitions (instagram, whatsapp, firestore, spond)
 - `src/types/index.ts` - Zod schemas for messages, actions, and webhook payloads
@@ -79,8 +80,11 @@ Required in `.env` or Firebase config:
 - `GOOGLE_API_KEY` - Gemini API key
 - `INSTAGRAM_ACCESS_TOKEN`, `INSTAGRAM_PAGE_ID`, `INSTAGRAM_VERIFY_TOKEN`, `INSTAGRAM_APP_SECRET`
 - `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`
+- `WHATSAPP_BOOKING_TEMPLATE`, `WHATSAPP_ESCALATION_TEMPLATE` - WhatsApp message template names
 - `MANAGER_WHATSAPP_NUMBER` - For notifications
+- `NET_SESSION_COORDINATOR` - Contact info for net session queries
 - `PROCESS_MESSAGE_URL` - Cloud Tasks callback URL (for OIDC audience validation)
+- `CLOUD_TASKS_QUEUE` - Cloud Tasks queue name
 
 ## Deployment
 
