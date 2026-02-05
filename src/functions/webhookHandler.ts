@@ -41,12 +41,6 @@ function validateSignature(
       .update(payload)
       .digest("hex");
 
-  logger.debug("Signature validation", {
-    appSecret: INSTAGRAM_APP_SECRET,
-    receivedSignature: signature,
-    generatedSignature: expectedSignature,
-  });
-
   // Ensure same length before timing-safe comparison to prevent length-based attacks
   const sigBuffer = Buffer.from(signature);
   const expectedBuffer = Buffer.from(expectedSignature);
