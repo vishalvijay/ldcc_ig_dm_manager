@@ -293,6 +293,12 @@ export const instagramWebhook = onRequest(
 
     // Process each entry
     for (const entry of payload.entry || []) {
+      logger.debug("Processing webhook entry", {
+        entryId: entry.id,
+        time: entry.time,
+        messagingCount: entry.messaging?.length || 0,
+      });
+
       for (const messaging of entry.messaging || []) {
         // Check if we should process this message
         if (!shouldProcessMessage(messaging)) {
