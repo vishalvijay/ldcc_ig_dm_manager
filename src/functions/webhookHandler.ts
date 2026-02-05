@@ -249,9 +249,13 @@ export const instagramWebhook = onRequest(
       return;
     }
 
-    // Get raw body for signature validation
-    const rawBody =
-      typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+    // Get raw body for signature validation (must use original bytes, not re-serialized)
+    const rawBody = req.rawBody?.toString();
+    if (!rawBody) {
+      logger.warn("No raw body available for signature validation");
+      res.status(400).send("Bad request");
+      return;
+    }
     const signature = req.headers["x-hub-signature-256"] as string | undefined;
 
     // Log request headers and rawBody for debugging
