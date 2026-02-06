@@ -123,7 +123,7 @@ export interface StoredMessage {
 }
 
 // =============================================================================
-// Instagram Webhook Types
+// Instagram Webhook Types (API v24+)
 // =============================================================================
 
 export interface InstagramWebhookAttachment {
@@ -165,10 +165,6 @@ export interface InstagramWebhookReaction {
   emoji?: string;
 }
 
-export interface InstagramWebhookRead {
-  watermark: number;
-}
-
 export interface InstagramWebhookPostback {
   mid: string;
   title: string;
@@ -182,21 +178,47 @@ export interface InstagramWebhookReferral {
   ad_id?: string;
 }
 
-export interface InstagramWebhookMessaging {
+/**
+ * Webhook field types for Instagram messaging.
+ * See: https://developers.facebook.com/docs/instagram-platform/webhooks
+ */
+export type InstagramWebhookField =
+  | "messages" // Incoming messages
+  | "message_echoes" // Sent message echoes (included in messages subscription)
+  | "message_reactions" // Reactions to messages
+  | "messaging_handover" // Handover protocol events
+  | "messaging_optins" // User opt-in events
+  | "messaging_postbacks" // Button/quick reply postbacks
+  | "messaging_referral" // Referral events (ads, m.me links)
+  | "messaging_seen" // Read receipts
+  | "standby"; // Standby channel events
+
+/**
+ * The value object within a webhook change event.
+ */
+export interface InstagramWebhookChangeValue {
   sender: { id: string };
   recipient: { id: string };
-  timestamp: number;
+  timestamp: string;
   message?: InstagramWebhookMessage;
   reaction?: InstagramWebhookReaction;
-  read?: InstagramWebhookRead;
+  read?: { watermark: number };
   postback?: InstagramWebhookPostback;
   referral?: InstagramWebhookReferral;
+}
+
+/**
+ * API v24+ uses a changes-based format for messaging webhooks.
+ */
+export interface InstagramWebhookChange {
+  field: InstagramWebhookField;
+  value: InstagramWebhookChangeValue;
 }
 
 export interface InstagramWebhookEntry {
   id: string;
   time: number;
-  messaging: InstagramWebhookMessaging[];
+  changes: InstagramWebhookChange[];
 }
 
 export interface InstagramWebhookPayload {

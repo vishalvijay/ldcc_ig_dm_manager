@@ -9,8 +9,10 @@ import * as logger from "firebase-functions/logger";
 import { onRequest } from "firebase-functions/v2/https";
 import {
   InstagramWebhookPayload,
-  InstagramWebhookMessaging,
   InstagramWebhookAttachment,
+  InstagramWebhookChange,
+  InstagramWebhookChangeValue,
+  InstagramWebhookMessage,
   InstagramMessage,
 } from "../types";
 import { storeMessage, scheduleProcessing } from "../services/messageStore";
@@ -55,7 +57,7 @@ function validateSignature(
  * Determine message type from webhook message object.
  */
 function getMessageType(
-  message: InstagramWebhookMessaging["message"]
+  message: InstagramWebhookMessage | undefined
 ): InstagramMessage["messageType"] {
   if (!message) return "other";
 
@@ -92,74 +94,92 @@ function getMessageType(
 }
 
 /**
- * Transform webhook messaging to InstagramMessage.
+ * Transform webhook change value to InstagramMessage.
  */
 function transformToInstagramMessage(
-  messaging: InstagramWebhookMessaging
+  value: InstagramWebhookChangeValue
 ): InstagramMessage | null {
-  if (!messaging.message) return null;
+  if (!value.message) return null;
 
   return {
-    id: messaging.message.mid,
-    senderId: messaging.sender.id,
-    recipientId: messaging.recipient.id,
-    text: messaging.message.text || "",
-    timestamp: messaging.timestamp,
-    messageType: getMessageType(messaging.message),
-    replyToMessageId: messaging.message.reply_to?.mid,
+    id: value.message.mid,
+    senderId: value.sender.id,
+    recipientId: value.recipient.id,
+    text: value.message.text || "",
+    timestamp: parseInt(value.timestamp, 10),
+    messageType: getMessageType(value.message),
+    replyToMessageId: value.message.reply_to?.mid,
   };
 }
 
 /**
- * Check if this message should be processed.
+ * Extract messaging change values from an entry.
+ */
+function getMessagingEvents(entry: { changes: InstagramWebhookChange[] }): InstagramWebhookChangeValue[] {
+  // Filter for messaging-related fields that we want to process
+  const messagingFields = new Set([
+    "messages",
+    "message_reactions",
+    "messaging_postbacks",
+    "messaging_referral",
+    "messaging_seen",
+  ]);
+
+  return entry.changes
+    .filter(change => messagingFields.has(change.field))
+    .map(change => change.value);
+}
+
+/**
+ * Check if this event should be processed.
  * Filters out echoes, reactions, read receipts, and messages from our page.
  */
-function shouldProcessMessage(messaging: InstagramWebhookMessaging): boolean {
+function shouldProcessEvent(value: InstagramWebhookChangeValue): boolean {
   // Skip echo messages (sent by us)
-  if (messaging.message?.is_echo) {
+  if (value.message?.is_echo) {
     logger.debug("Skipping echo message");
     return false;
   }
 
   // Skip reaction events
-  if (messaging.reaction) {
+  if (value.reaction) {
     logger.debug("Skipping reaction event");
     return false;
   }
 
   // Skip read receipt events
-  if (messaging.read) {
+  if (value.read) {
     logger.debug("Skipping read receipt event");
     return false;
   }
 
   // Skip postback events (button clicks) - log for now
-  if (messaging.postback) {
+  if (value.postback) {
     logger.info("Received postback event", {
-      title: messaging.postback.title,
-      payload: messaging.postback.payload,
+      title: value.postback.title,
+      payload: value.postback.payload,
     });
     return false;
   }
 
   // Log referral events but don't skip if there's also a message
-  if (messaging.referral) {
+  if (value.referral) {
     logger.info("Received referral event", {
-      source: messaging.referral.source,
-      type: messaging.referral.type,
-      ref: messaging.referral.ref,
+      source: value.referral.source,
+      type: value.referral.type,
+      ref: value.referral.ref,
     });
     // Continue processing if there's a message attached
   }
 
   // Skip if no message content
-  if (!messaging.message) {
+  if (!value.message) {
     logger.debug("Skipping event with no message");
     return false;
   }
 
   // Skip messages from our own page
-  if (messaging.sender.id === INSTAGRAM_PAGE_ID) {
+  if (value.sender.id === INSTAGRAM_PAGE_ID) {
     logger.debug("Skipping message from our page");
     return false;
   }
@@ -293,27 +313,29 @@ export const instagramWebhook = onRequest(
 
     // Process each entry
     for (const entry of payload.entry || []) {
+      const events = getMessagingEvents(entry);
+
       logger.debug("Processing webhook entry", {
         entryId: entry.id,
         time: entry.time,
-        messagingCount: entry.messaging?.length || 0,
+        eventCount: events.length,
       });
 
-      for (const messaging of entry.messaging || []) {
-        // Check if we should process this message
-        if (!shouldProcessMessage(messaging)) {
+      for (const event of events) {
+        // Check if we should process this event
+        if (!shouldProcessEvent(event)) {
           continue;
         }
 
         // Transform to our message format
-        const message = transformToInstagramMessage(messaging);
+        const message = transformToInstagramMessage(event);
         if (!message) {
-          logger.warn("Failed to transform message", { messaging });
+          logger.warn("Failed to transform message", { event });
           continue;
         }
 
         // Use sender ID as thread ID for Instagram DMs
-        const threadId = messaging.sender.id;
+        const threadId = event.sender.id;
 
         // Check test mode filter
         if (!(await isAllowedInTestMode(threadId))) {
