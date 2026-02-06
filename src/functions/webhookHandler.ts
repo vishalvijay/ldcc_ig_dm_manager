@@ -10,9 +10,10 @@ import { onRequest } from "firebase-functions/v2/https";
 import {
   InstagramWebhookPayload,
   InstagramWebhookAttachment,
-  InstagramWebhookChange,
   InstagramWebhookChangeValue,
   InstagramWebhookMessage,
+  InstagramWebhookMessagingEvent,
+  InstagramWebhookEntry,
   InstagramMessage,
 } from "../types";
 import { storeMessage, scheduleProcessing } from "../services/messageStore";
@@ -113,21 +114,48 @@ function transformToInstagramMessage(
 }
 
 /**
- * Extract messaging change values from an entry.
+ * Convert legacy messaging event to change value format.
  */
-function getMessagingEvents(entry: { changes: InstagramWebhookChange[] }): InstagramWebhookChangeValue[] {
-  // Filter for messaging-related fields that we want to process
-  const messagingFields = new Set([
-    "messages",
-    "message_reactions",
-    "messaging_postbacks",
-    "messaging_referral",
-    "messaging_seen",
-  ]);
+function legacyEventToChangeValue(event: InstagramWebhookMessagingEvent): InstagramWebhookChangeValue {
+  return {
+    sender: event.sender,
+    recipient: event.recipient,
+    timestamp: String(event.timestamp),
+    message: event.message,
+    reaction: event.reaction,
+    read: event.read ? { watermark: 0 } : undefined,
+    postback: event.postback,
+    referral: event.referral,
+  };
+}
 
-  return entry.changes
-    .filter(change => messagingFields.has(change.field))
-    .map(change => change.value);
+/**
+ * Extract messaging change values from an entry.
+ * Handles both API v24+ (changes) and legacy (messaging) formats.
+ */
+function getMessagingEvents(entry: InstagramWebhookEntry): InstagramWebhookChangeValue[] {
+  // Handle API v24+ format with changes array
+  if (entry.changes && entry.changes.length > 0) {
+    // Filter for messaging-related fields that we want to process
+    const messagingFields = new Set([
+      "messages",
+      "message_reactions",
+      "messaging_postbacks",
+      "messaging_referral",
+      "messaging_seen",
+    ]);
+
+    return entry.changes
+      .filter(change => messagingFields.has(change.field))
+      .map(change => change.value);
+  }
+
+  // Handle legacy format with messaging array
+  if (entry.messaging && entry.messaging.length > 0) {
+    return entry.messaging.map(legacyEventToChangeValue);
+  }
+
+  return [];
 }
 
 /**

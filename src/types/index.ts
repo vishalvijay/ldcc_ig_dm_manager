@@ -215,10 +215,28 @@ export interface InstagramWebhookChange {
   value: InstagramWebhookChangeValue;
 }
 
+/**
+ * Legacy messaging format (pre-v24) event object.
+ * Used in entry.messaging[] array.
+ */
+export interface InstagramWebhookMessagingEvent {
+  sender: { id: string };
+  recipient: { id: string };
+  timestamp: number;
+  message?: InstagramWebhookMessage;
+  reaction?: InstagramWebhookReaction;
+  read?: { mid: string };
+  postback?: InstagramWebhookPostback;
+  referral?: InstagramWebhookReferral;
+}
+
 export interface InstagramWebhookEntry {
   id: string;
   time: number;
-  changes: InstagramWebhookChange[];
+  /** API v24+ format */
+  changes?: InstagramWebhookChange[];
+  /** Legacy format (pre-v24) */
+  messaging?: InstagramWebhookMessagingEvent[];
 }
 
 export interface InstagramWebhookPayload {
