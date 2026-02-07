@@ -45,6 +45,7 @@ Instagram Webhook → Firestore (store as pending) → Cloud Tasks (60s debounce
 - **Instagram Tools** (`src/tools/instagram.ts`) — sendInstagramMessage, reactToInstagramMessage, getThreadMessages, isNewThread
 - **WhatsApp Tools** (`src/tools/whatsapp.ts`) — notifyBookingConfirmed, escalateToManager (via WhatsApp Business API templates)
 - **Firestore Tools** (`src/tools/firestore.ts`) — getConversationHistory, getUserProfile, checkLastNotification, recordBooking
+- **No-op Tool** (`src/tools/` via tool registry) — `no_action` for when the LLM decides no response is needed (e.g., reactions, duplicate messages, conversation already ended)
 
 ### Firestore Collections
 
@@ -90,14 +91,16 @@ Required in `.env` (see `.env.example` for template):
 Optional:
 - `TEST_MODE_SENDER_ID` — When set, only accept messages from this sender ID (for testing)
 - `CLOUD_FUNCTIONS_REGION` — Defaults to `europe-west2`
+- `DEBOUNCE_DELAY_SECONDS` — Debounce window for Cloud Tasks (default 60)
+- `RESET_KEYWORD` — Keyword that triggers conversation reset
+- `ENABLE_FIREBASE_MONITORING` — Enable Firebase telemetry
 
 ## Deployment
 
 CI/CD: Pushing to `main` triggers automatic deployment via GitHub Actions (`.github/workflows/deploy-firebase.yml`).
 
 ```bash
-npm run deploy                              # Deploy functions
-firebase deploy --only firestore:indexes   # Deploy Firestore indexes (required for status queries)
+npm run deploy                              # Deploy functions + Firestore indexes
 ```
 
 ## Domain Context
