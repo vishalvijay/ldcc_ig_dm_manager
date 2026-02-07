@@ -25,6 +25,7 @@ const SendMessageOutputSchema = z.object({
 });
 
 const ReactToMessageInputSchema = z.object({
+  recipientId: z.string().describe("The Instagram user ID of the message sender"),
   messageId: z.string().describe("The message ID to react to"),
   reaction: z.enum(["love", "like", "laugh", "wow", "sad", "angry"]).describe("The reaction to send"),
 });
@@ -74,7 +75,7 @@ export function defineInstagramTools(ai: Genkit): ToolAction[] {
     async (input) => {
       try {
         const instagram = getInstagramService();
-        await instagram.sendReaction(input.messageId, input.reaction);
+        await instagram.sendReaction(input.recipientId, input.messageId, input.reaction);
         return { success: true };
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Unknown error";

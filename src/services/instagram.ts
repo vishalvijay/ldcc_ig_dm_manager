@@ -168,6 +168,7 @@ export class InstagramService {
    * @param reaction - The reaction type
    */
   async sendReaction(
+    recipientId: string,
     messageId: string,
     reaction: ReactToMessageAction["reaction"]
   ): Promise<void> {
@@ -179,9 +180,9 @@ export class InstagramService {
         Authorization: `Bearer ${this.accessToken}`,
       },
       body: JSON.stringify({
-        recipient: { comment_id: messageId },
+        recipient: { id: recipientId },
         sender_action: "react",
-        payload: { reaction },
+        payload: { message_id: messageId, reaction },
       }),
     });
 
