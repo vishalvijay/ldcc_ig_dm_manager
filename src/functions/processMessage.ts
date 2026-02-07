@@ -2,54 +2,34 @@
  * Message Processor - Cloud Task callback for processing Instagram messages.
  *
  * Uses Firebase onTaskDispatched which handles authentication automatically.
- * Fetches pending messages and invokes the dmAgentFlow which handles
- * actions via tool calls.
+ * Acquires a thread lock, fetches conversation history from the Instagram API,
+ * and invokes the dmAgentFlow which handles actions via tool calls.
  */
 
 import * as logger from "firebase-functions/logger";
 import { onTaskDispatched } from "firebase-functions/v2/tasks";
 import {
-  claimPendingMessages,
-  getConversationHistory,
-  updateMessageStatus,
-  markProcessedAndCheckPending,
+  acquireThreadLock,
+  releaseThreadLockAndCheck,
   scheduleProcessing,
 } from "../services/messageStore";
 import { REGION } from "../config";
 import { getInstagramService } from "../services/instagram";
 import { dmAgentFlow, DmAgentInput } from "../flows/dmAgent";
-import { ConversationMessage, StoredMessage, MessageStatus } from "../types";
+import { ConversationMessage } from "../types";
 
 interface ProcessMessagePayload {
   threadId: string;
-  messageId: string;
-}
-
-/**
- * Build conversation history from stored messages.
- */
-function buildConversationHistory(
-  messages: StoredMessage[],
-  pageId: string
-): ConversationMessage[] {
-  return messages.map((m) => ({
-    role: m.message.senderId === pageId ? "assistant" : "user",
-    content: m.message.text,
-    timestamp: m.message.timestamp,
-    messageId: m.message.id,
-  }));
 }
 
 /**
  * Process Message Function - Cloud Task callback.
  *
  * This function is called by Cloud Tasks after the debounce delay.
- * It atomically claims pending messages and processes them.
- * The dmAgentFlow handles all actions via tool calls.
+ * It acquires a thread lock, fetches conversation history from the
+ * Instagram API, and processes via the LLM agent.
  *
- * Concurrency: Only one task processes per thread at a time.
- * If another task is processing, this task exits and relies on
- * the active task to schedule a follow-up if needed.
+ * Concurrency: Only one task processes per thread at a time via the thread lock.
  */
 export const processMessage = onTaskDispatched(
   {
@@ -70,39 +50,47 @@ export const processMessage = onTaskDispatched(
 
     if (!threadId) {
       logger.error("Missing threadId in payload");
-      // Don't retry — bad payload won't improve
       return;
     }
 
     logger.info("Processing messages for thread", { threadId });
 
-    // Track claimed messages for potential rollback
-    let claimedMessages: StoredMessage[] = [];
+    // Acquire thread lock — exits if another task is processing or no pending messages
+    const acquired = await acquireThreadLock(threadId);
+    if (!acquired) {
+      logger.info("Could not acquire thread lock (already processing or no pending)", { threadId });
+      return;
+    }
 
     try {
-      // Atomically claim pending messages (prevents race conditions)
-      // Returns empty if another task is already processing this thread
-      claimedMessages = await claimPendingMessages(threadId);
-
-      if (claimedMessages.length === 0) {
-        logger.info("No messages to claim (none pending or another task processing)", { threadId });
-        return;
-      }
-
-      // Get conversation history and user profile
       const instagram = getInstagramService();
       const pageId = process.env.META_MESSENGER_PAGE_ID || "";
 
-      const history = await getConversationHistory(threadId, 50);
-      const conversationHistory = buildConversationHistory(history, pageId);
+      // Fetch conversation history from Instagram API
+      const threadMessages = await instagram.getConversationMessages(threadId, 50);
 
-      const latestMessage = claimedMessages[claimedMessages.length - 1];
-      const sender = await instagram.getUserProfile(latestMessage.message.senderId);
+      if (threadMessages.length === 0) {
+        logger.warn("No messages found in Instagram conversation", { threadId });
+        await releaseThreadLockAndCheck(threadId, "");
+        return;
+      }
+
+      // Build conversation messages with roles assigned by sender
+      const messages: ConversationMessage[] = threadMessages.map((m) => ({
+        role: m.fromId === pageId ? "assistant" as const : "user" as const,
+        content: m.text,
+        timestamp: new Date(m.createdTime).getTime(),
+        messageId: m.id,
+      }));
+
+      // Find the latest user message ID for reactions
+      const latestUserMessageId = [...messages].reverse().find((m) => m.role === "user")?.messageId;
+      const latestMessageId = threadMessages[threadMessages.length - 1].id;
+
+      // Get user profile
+      const sender = await instagram.getUserProfile(threadId);
 
       // Build input for the agent
-      const claimedAsHistory = buildConversationHistory(claimedMessages, pageId);
-      const allMessages = [...conversationHistory, ...claimedAsHistory.slice(0, -1)];
-
       const input: DmAgentInput = {
         conversationId: threadId,
         sender: {
@@ -110,34 +98,29 @@ export const processMessage = onTaskDispatched(
           username: sender.username,
           name: sender.name,
         },
-        messages: allMessages,
-        currentMessage: latestMessage.message,
+        messages,
+        latestUserMessageId: latestUserMessageId || latestMessageId,
       };
 
-      // Call the agent flow - it handles all actions via tool calls
+      // Call the agent flow — it handles all actions via tool calls
       const result = await dmAgentFlow(input);
 
-      // Atomically: mark as processed + check for new pending
-      const messageIds = claimedMessages.map((m) => m.id);
-      const newPending = await markProcessedAndCheckPending(threadId, messageIds);
+      // Release lock and check for new pending messages
+      const hasPending = await releaseThreadLockAndCheck(threadId, latestMessageId);
 
       logger.info("Message processing complete", {
         threadId,
-        messagesProcessed: messageIds.length,
         actionsExecuted: result.actionsExecuted,
       });
 
       // Schedule follow-up if new messages arrived during processing
-      // Separate try-catch to avoid resetting processed messages on scheduling failure
-      if (newPending.length > 0) {
+      if (hasPending) {
         try {
           logger.info("New messages arrived during processing, scheduling follow-up", {
             threadId,
-            pendingCount: newPending.length,
           });
-          await scheduleProcessing(threadId, newPending[0].id);
+          await scheduleProcessing(threadId);
         } catch (scheduleError) {
-          // Log but don't fail - the webhook will schedule a task when next message arrives
           logger.error("Failed to schedule follow-up task", {
             threadId,
             error: scheduleError instanceof Error ? scheduleError.message : "Unknown error",
@@ -148,13 +131,10 @@ export const processMessage = onTaskDispatched(
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       logger.error("Message processing failed", { threadId, error: errorMessage });
 
-      // Reset claimed messages back to pending so they can be retried
-      if (claimedMessages.length > 0) {
-        const messageIds = claimedMessages.map((m) => m.id);
-        await updateMessageStatus(threadId, messageIds, MessageStatus.PENDING).catch((e) =>
-          logger.error("Failed to reset messages to pending", { error: e })
-        );
-      }
+      // Release the lock so future tasks can process
+      await releaseThreadLockAndCheck(threadId, "").catch((e) =>
+        logger.error("Failed to release thread lock after error", { error: e })
+      );
 
       // Throw to trigger Cloud Tasks retry
       throw error;

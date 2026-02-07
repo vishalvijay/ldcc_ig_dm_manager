@@ -14,7 +14,7 @@ import {
   MetaMessengerWebhookMessagingEvent,
   InstagramMessage,
 } from "../types";
-import { storeMessage, scheduleProcessing, deleteConversationData } from "../services/messageStore";
+import { markThreadPending, scheduleProcessing, deleteThreadData } from "../services/messageStore";
 import { REGION, TEST_MODE_SENDER_ID, RESET_KEYWORD } from "../config";
 
 // Environment variables
@@ -317,7 +317,7 @@ export const instagramWebhook = onRequest(
             threadId,
           });
           try {
-            await deleteConversationData(threadId);
+            await deleteThreadData(threadId);
           } catch (error) {
             logger.error("Failed to delete conversation data", {
               threadId,
@@ -335,9 +335,9 @@ export const instagramWebhook = onRequest(
         });
 
         try {
-          // Store message and schedule processing
-          await storeMessage(message, threadId);
-          await scheduleProcessing(threadId, message.id);
+          // Mark thread as pending and schedule processing
+          await markThreadPending(threadId);
+          await scheduleProcessing(threadId);
         } catch (error) {
           logger.error("Failed to store/schedule message", {
             messageId: message.id,

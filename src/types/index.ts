@@ -43,14 +43,6 @@ export interface ConversationMessage {
   messageId?: string;
 }
 
-export interface ConversationContext {
-  conversationId: string;
-  sender: InstagramSender;
-  messages: ConversationMessage[];
-  /** Current pending message that triggered this flow */
-  currentMessage: InstagramMessage;
-}
-
 // =============================================================================
 // Agent Response Actions
 // =============================================================================
@@ -101,25 +93,13 @@ export type AgentAction = z.infer<typeof AgentActionSchema>;
 export type AgentResponse = z.infer<typeof AgentResponseSchema>;
 
 // =============================================================================
-// Firestore Message State
+// Firestore Thread State
 // =============================================================================
 
-export enum MessageStatus {
-  PENDING = "pending",
-  PROCESSING = "processing",
-  PROCESSED = "processed",
-  FAILED = "failed",
-}
-
-export interface StoredMessage {
-  id: string;
-  conversationId: string;
-  message: InstagramMessage;
-  status: MessageStatus;
-  createdAt: number;
-  updatedAt: number;
-  processedAt?: number;
-  error?: string;
+export interface ThreadState {
+  processing: boolean;
+  hasPendingMessages: boolean;
+  lastProcessedMessageId?: string;
 }
 
 // =============================================================================

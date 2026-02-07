@@ -17,28 +17,6 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 // Schema Definitions
 // =============================================================================
 
-const GetConversationHistoryInputSchema = z.object({
-  threadId: z.string().describe("The Instagram thread/conversation ID"),
-  limit: z
-    .number()
-    .optional()
-    .default(20)
-    .describe("Maximum number of messages to fetch (default: 20)"),
-});
-
-const GetConversationHistoryOutputSchema = z.object({
-  messages: z.array(
-    z.object({
-      text: z.string(),
-      sender: z.enum(["user", "agent"]),
-      timestamp: z.number(),
-      messageId: z.string().optional(),
-    })
-  ),
-  userName: z.string().optional(),
-  lastActivity: z.number().optional(),
-});
-
 const GetUserProfileInputSchema = z.object({
   userId: z.string().describe("The Instagram user ID"),
 });
@@ -101,50 +79,6 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
  * Define all Firestore tools for the GenKit AI instance.
  */
 export function defineFirestoreTools(ai: Genkit): ToolAction[] {
-  const getConversationHistory = ai.defineTool(
-    {
-      name: "get_conversation_history",
-      description:
-        "Fetch the conversation history for a thread. Use this to understand the full context of a conversation.",
-      inputSchema: GetConversationHistoryInputSchema,
-      outputSchema: GetConversationHistoryOutputSchema,
-    },
-    async (input) => {
-      const db = getDb();
-      const threadDoc = await db
-        .collection("conversations")
-        .doc(input.threadId)
-        .get();
-
-      const messagesSnapshot = await db
-        .collection("conversations")
-        .doc(input.threadId)
-        .collection("messages")
-        .orderBy("timestamp", "desc")
-        .limit(input.limit ?? 20)
-        .get();
-
-      const messages = messagesSnapshot.docs
-        .map((doc) => {
-          const data = doc.data();
-          return {
-            text: data.text as string,
-            sender: data.sender as "user" | "agent",
-            timestamp: data.timestamp as number,
-            messageId: doc.id,
-          };
-        })
-        .reverse(); // Chronological order
-
-      const threadData = threadDoc.data();
-      return {
-        messages,
-        userName: threadData?.userName,
-        lastActivity: threadData?.lastActivity,
-      };
-    }
-  );
-
   const getUserProfile = ai.defineTool(
     {
       name: "get_user_profile",
@@ -258,7 +192,6 @@ export function defineFirestoreTools(ai: Genkit): ToolAction[] {
   );
 
   return [
-    getConversationHistory,
     getUserProfile,
     checkLastNotification,
     recordBooking,

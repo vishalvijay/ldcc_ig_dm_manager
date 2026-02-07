@@ -13,7 +13,6 @@ import { getAllTools } from "../tools";
 
 /**
  * Input schema for the DM Agent flow.
- * Matches the ConversationContext interface but as a Zod schema for validation.
  */
 export const DmAgentInputSchema = z.object({
   conversationId: z.string().describe("Unique identifier for this conversation"),
@@ -32,27 +31,7 @@ export const DmAgentInputSchema = z.object({
       })
     )
     .describe("Conversation history"),
-  currentMessage: z.object({
-    id: z.string(),
-    senderId: z.string(),
-    recipientId: z.string(),
-    text: z.string(),
-    timestamp: z.number(),
-    messageType: z.enum([
-      "text",
-      "image",
-      "video",
-      "audio",
-      "file",
-      "share",
-      "story_mention",
-      "story_reply",
-      "reel",
-      "ig_reel",
-      "other",
-    ]),
-    replyToMessageId: z.string().optional(),
-  }),
+  latestUserMessageId: z.string().describe("Message ID of the latest user message (for reactions)"),
 });
 
 export type DmAgentInput = z.infer<typeof DmAgentInputSchema>;
@@ -82,7 +61,7 @@ function buildContextInfo(context: DmAgentInput): string {
 ## Current Context
 - User Instagram ID (use for recipientId in send_instagram_message and react_to_instagram_message): ${context.sender.id}
 - User: ${userInfo}
-- Current Message ID (use for react_to_instagram_message): ${context.currentMessage.id}
+- Latest User Message ID (use for react_to_instagram_message): ${context.latestUserMessageId}
 - Conversation ID: ${context.conversationId}
 `;
 }
@@ -101,41 +80,17 @@ export const dmAgentFlow = ai.defineFlow(
   },
   async (context: DmAgentInput): Promise<DmAgentOutput> => {
     try {
-      // Build message history for the LLM
-      // Include the current message in the conversation
-      const allMessages = [
-        ...context.messages,
-        {
-          role: "user" as const,
-          content: context.currentMessage.text,
-          timestamp: context.currentMessage.timestamp,
-          messageId: context.currentMessage.id,
-        },
-      ];
-
       // Format conversation for GenKit
       // GenKit uses "model" instead of "assistant" for AI messages
-      const conversationHistory = allMessages.map((m) => ({
+      // Conversation already includes both user and assistant messages from Instagram API
+      const conversationHistory = context.messages.map((m) => ({
         role: m.role === "assistant" ? ("model" as const) : ("user" as const),
         content: [{ text: m.content }],
       }));
 
-      // Add context about message type if not a simple text message
-      let messageTypeContext = "";
-      if (context.currentMessage.messageType === "story_mention") {
-        messageTypeContext =
-          "\n[Note: This message is a story mention - the user mentioned LDCC in their story]";
-      } else if (context.currentMessage.messageType === "story_reply") {
-        messageTypeContext =
-          "\n[Note: This message is a reply to an LDCC story]";
-      } else if (context.currentMessage.messageType === "image") {
-        messageTypeContext =
-          "\n[Note: This message contains an image - the text shown is any accompanying caption]";
-      }
-
       // Build the full system prompt with context
       const contextInfo = buildContextInfo(context);
-      const fullSystemPrompt = SYSTEM_PROMPT + contextInfo + messageTypeContext;
+      const fullSystemPrompt = SYSTEM_PROMPT + contextInfo;
 
       // Get all available tools for the agent
       const tools = await getAllTools(ai);

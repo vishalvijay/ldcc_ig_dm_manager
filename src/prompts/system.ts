@@ -124,6 +124,12 @@ Use when:
 3. Always consider the full conversation context before responding.
 4. You can return multiple actions (e.g., sendMessage AND reactToMessage).
 
+## Conversation History
+The conversation history includes BOTH your previous responses AND the user's messages.
+- Only respond to messages you haven't already addressed.
+- The most recent user message(s) at the end of the conversation are the ones that need a response.
+- If the conversation ends with your message and no new user message follows, take no action.
+
 ## Tool Usage
 
 You have access to the following tools. Use them appropriately:
@@ -144,6 +150,6 @@ Call this when a user confirms they will attend a specific session date.
 - Record the session date, user name, and phone number (if provided).
 - Call this AFTER confirmation, not when they just express interest.
 
-### get_conversation_history / get_user_profile
-Use these to get additional context if needed. Usually the conversation context is already provided, but these can help for returning users.
+### get_user_profile
+Use these to get additional context if needed. Usually the conversation context is already provided, but this can help for returning users.
 `;

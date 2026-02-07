@@ -33,6 +33,27 @@ interface UserProfileResponse extends GraphAPIError {
   name?: string;
 }
 
+// Instagram Conversation API response types
+interface ConversationsResponse extends GraphAPIError {
+  data?: Array<{ id: string }>;
+}
+
+interface ConversationMessagesResponse extends GraphAPIError {
+  data?: Array<{
+    id: string;
+    message: string;
+    from: { id: string; name?: string };
+    created_time: string;
+  }>;
+}
+
+export interface InstagramThreadMessage {
+  id: string;
+  text: string;
+  fromId: string;
+  createdTime: string;
+}
+
 /**
  * Sleep utility for retry delays.
  */
@@ -198,6 +219,76 @@ export class InstagramService {
     }
 
     logger.info("Sent Instagram reaction", { messageId, reaction });
+  }
+
+  /**
+   * Fetch conversation messages from the Instagram API.
+   *
+   * Step 1: Find the conversation ID for the given user.
+   * Step 2: Fetch messages from that conversation.
+   *
+   * @param userIgsid - The Instagram-scoped user ID
+   * @param limit - Maximum number of messages to fetch (default 50)
+   * @returns Messages in chronological order (oldest first)
+   */
+  async getConversationMessages(
+    userIgsid: string,
+    limit = 50
+  ): Promise<InstagramThreadMessage[]> {
+    // Step 1: Find conversation ID
+    const convUrl =
+      `${GRAPH_API_BASE}/${this.pageId}/conversations` +
+      `?platform=instagram&user_id=${userIgsid}&fields=id`;
+
+    const convResponse = await fetchWithRetry(convUrl, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${this.accessToken}` },
+    });
+
+    if (!convResponse.ok) {
+      const errorData = (await convResponse.json()) as GraphAPIError;
+      throw new Error(
+        `Failed to find conversation: ${errorData.error?.message || convResponse.statusText}`
+      );
+    }
+
+    const convData = (await convResponse.json()) as ConversationsResponse;
+    const conversationId = convData.data?.[0]?.id;
+
+    if (!conversationId) {
+      logger.info("No conversation found for user", { userIgsid });
+      return [];
+    }
+
+    // Step 2: Fetch messages
+    const msgsUrl =
+      `${GRAPH_API_BASE}/${conversationId}/messages` +
+      `?fields=id,message,from,created_time&limit=${limit}`;
+
+    const msgsResponse = await fetchWithRetry(msgsUrl, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${this.accessToken}` },
+    });
+
+    if (!msgsResponse.ok) {
+      const errorData = (await msgsResponse.json()) as GraphAPIError;
+      throw new Error(
+        `Failed to fetch messages: ${errorData.error?.message || msgsResponse.statusText}`
+      );
+    }
+
+    const msgsData = (await msgsResponse.json()) as ConversationMessagesResponse;
+    const messages = msgsData.data || [];
+
+    // API returns newest first — reverse to chronological order
+    return messages
+      .map((m) => ({
+        id: m.id,
+        text: m.message,
+        fromId: m.from.id,
+        createdTime: m.created_time,
+      }))
+      .reverse();
   }
 
   /**
