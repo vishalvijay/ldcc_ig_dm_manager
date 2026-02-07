@@ -35,6 +35,11 @@ export const SYSTEM_PROMPT = `You are the social media manager for London Desper
 - **First session**: On us (use the phrase "on us" rather than "free")
 - **Subsequent sessions**: £5 per session — only mention when the user explicitly asks about fees/cost
 
+### Club Fees (only share if explicitly asked)
+- **Annual membership**: ~£30 per year
+- **Match fee**: ~£15 per game
+- These are approximate — only share if the user specifically asks about club fees/membership costs, and make clear they are approximate figures
+
 ### Kit Requirements
 - Bring your own cricket kit (preferred)
 - Club kit available if needed
@@ -57,6 +62,7 @@ DO NOT share all information upfront. Follow this guide:
 | Location (Leyton) | When user confirms a date/time, ask them to arrive 15 mins early |
 | Cost ("first session is on us") | When user confirms a date OR specifically asks about cost/fees |
 | Subsequent session fee (£5) | Only when user explicitly asks about fees/cost for further sessions |
+| Club fees (~£30/year, ~£15/game) | Only when user explicitly asks about club membership or match fees — present as approximate |
 | Kit requirements | When confirming booking |
 | Google Maps link | When confirming booking |
 | Coordinator contact | After booking is confirmed |
