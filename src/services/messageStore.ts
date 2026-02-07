@@ -3,17 +3,15 @@
  *
  * Handles:
  * - Storing incoming messages
- * - Scheduling processing tasks (with randomized delay for batching)
+ * - Scheduling processing tasks via Firebase TaskQueue (with time-window deduplication)
  * - Atomic message claiming for concurrent task safety
  * - Conversation history retrieval
  */
 
 import * as logger from "firebase-functions/logger";
-import { CloudTasksClient, protos } from "@google-cloud/tasks";
-import { status as grpcStatus } from "@grpc/grpc-js";
+import { getFunctions } from "firebase-admin/functions";
 import { getDb } from "../config/firebase";
 import { InstagramMessage, StoredMessage, MessageStatus } from "../types";
-import { REGION } from "../config";
 
 // Collection path
 const CONVERSATIONS_COLLECTION = "conversations";
@@ -21,14 +19,6 @@ const MESSAGES_SUBCOLLECTION = "messages";
 
 // Debounce configuration
 const DELAY_SECONDS = parseInt(process.env.DEBOUNCE_DELAY_SECONDS || "60", 10);
-
-// Cloud Tasks configuration
-const PROJECT_ID = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || "";
-const LOCATION = REGION;
-const QUEUE_NAME = process.env.CLOUD_TASKS_QUEUE || "dm-processing";
-const PROCESS_MESSAGE_URL = process.env.PROCESS_MESSAGE_URL || "";
-// Default Firebase service account: {PROJECT_ID}@appspot.gserviceaccount.com
-const CLOUD_TASKS_SERVICE_ACCOUNT = PROJECT_ID ? `${PROJECT_ID}@appspot.gserviceaccount.com` : "";
 
 /**
  * Store a message in Firestore.
@@ -68,10 +58,11 @@ export async function storeMessage(
 }
 
 /**
- * Schedule message processing via Cloud Tasks.
+ * Schedule message processing via Firebase TaskQueue.
  *
- * Uses a deduplication key based on threadId and a 60-second time window
- * to avoid scheduling multiple tasks for rapid messages in the same conversation.
+ * Uses a time-windowed task ID for native Cloud Tasks deduplication —
+ * if a task for the same thread and time window already exists, the
+ * enqueue is rejected (ALREADY_EXISTS), preventing duplicate processing.
  *
  * @param threadId - The conversation thread ID
  * @param messageId - The triggering message ID
@@ -80,63 +71,34 @@ export async function scheduleProcessing(
   threadId: string,
   messageId: string
 ): Promise<void> {
-  const now = Date.now();
-
-  const client = new CloudTasksClient();
-  const parent = client.queuePath(PROJECT_ID, LOCATION, QUEUE_NAME);
-
-  // Time window: buckets matching the delay
-  const timeWindow = Math.floor(now / (DELAY_SECONDS * 1000));
+  const timeWindow = Math.floor(Date.now() / (DELAY_SECONDS * 1000));
   const sanitizedThreadId = threadId.replace(/[^a-zA-Z0-9-_]/g, "_");
-  const taskName = `${parent}/tasks/process-${sanitizedThreadId}-${timeWindow}`;
+  const taskId = `process-${sanitizedThreadId}-${timeWindow}`;
 
-  const scheduleTime = new Date(now + DELAY_SECONDS * 1000);
-
-  const task: protos.google.cloud.tasks.v2.ITask = {
-    name: taskName,
-    httpRequest: {
-      httpMethod: "POST",
-      url: PROCESS_MESSAGE_URL,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: Buffer.from(
-        JSON.stringify({
-          threadId,
-          messageId,
-        })
-      ).toString("base64"),
-      // OIDC authentication for secure Cloud Tasks invocation
-      ...(CLOUD_TASKS_SERVICE_ACCOUNT && {
-        oidcToken: {
-          serviceAccountEmail: CLOUD_TASKS_SERVICE_ACCOUNT,
-          audience: PROCESS_MESSAGE_URL,
-        },
-      }),
-    },
-    scheduleTime: {
-      seconds: Math.floor(scheduleTime.getTime() / 1000),
-    },
-  };
+  const queue = getFunctions().taskQueue("processMessage");
 
   try {
-    // Try to create the task - it will fail if one already exists with the same name
-    await client.createTask({ parent, task });
+    await queue.enqueue(
+      { threadId, messageId },
+      {
+        scheduleDelaySeconds: DELAY_SECONDS,
+        id: taskId,
+      }
+    );
 
     logger.info("Scheduled processing task", {
       threadId,
       messageId,
+      taskId,
       delaySeconds: DELAY_SECONDS,
-      timeWindow,
-      scheduledFor: scheduleTime.toISOString(),
     });
   } catch (error) {
-    // If task already exists (ALREADY_EXISTS error), that's fine - debouncing is working
-    const errorCode = (error as { code?: number }).code;
-    if (errorCode === grpcStatus.ALREADY_EXISTS) {
+    const errCode = (error as { code?: string }).code;
+    if (errCode === "functions/already-exists") {
       logger.info("Task already scheduled for thread (debouncing)", {
         threadId,
         messageId,
+        taskId,
       });
     } else {
       logger.error("Failed to schedule processing task", {
