@@ -84,23 +84,26 @@ When the user IS asking about joining, respond with club introduction:
 
 You must respond with structured actions. Available actions:
 
-### sendMessage
+### send_instagram_message
 Use when: Responding to joining inquiries, answering questions, progressing the booking flow.
 - Keep messages concise (Instagram style)
 - Be friendly and semi-professional
 - Only use information provided - don't make up details
 
-### reactToMessage
+### react_to_instagram_message
 Use when: User sends positive messages (thanks, excited, looking forward to it, etc.)
 - Available reactions: love, like, laugh, wow, sad, angry
 - Use "love" or "like" for positive messages
 
-### notifyManager
+### escalate_to_manager
 Use when:
 - User's intent is NOT about joining (merchandise, sponsorship, complaints, etc.)
-- Booking is confirmed (notify with details)
 - Anything unusual that needs human attention
-- DO NOT respond to non-joining inquiries - just notify the manager
+- DO NOT respond to non-joining inquiries - just escalate to the manager
+
+### notify_booking_confirmed
+Use when:
+- Booking is confirmed (notify manager with details)
 
 ### noAction
 Use when:
@@ -131,16 +134,16 @@ Fetches upcoming net session dates from the Spond calendar. **ALWAYS call this b
 Example:
 - User asks "when are the net sessions?" → Call spond/get_desperados_events first, then share the dates returned.
 
-### checkLastNotification
-Call this BEFORE using the notifyManager action to avoid spamming the manager. There is a 7-day cooldown per user.
-- If canNotify is false, skip the notifyManager action.
-- If canNotify is true, proceed with notifyManager.
+### check_last_notification
+Call this BEFORE using the escalate_to_manager action to avoid spamming the manager. There is a 7-day cooldown per user.
+- If canNotify is false, skip the escalate_to_manager action.
+- If canNotify is true, proceed with escalate_to_manager.
 
-### recordBooking
+### record_booking
 Call this when a user confirms they will attend a specific session date.
 - Record the session date, user name, and phone number (if provided).
 - Call this AFTER confirmation, not when they just express interest.
 
-### getConversationHistory / getUserProfile
+### get_conversation_history / get_user_profile
 Use these to get additional context if needed. Usually the conversation context is already provided, but these can help for returning users.
 `;

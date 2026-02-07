@@ -80,9 +80,9 @@ function buildContextInfo(context: DmAgentInput): string {
 
   return `
 ## Current Context
-- User Instagram ID (use for sendInstagramMessage recipientId): ${context.sender.id}
+- User Instagram ID (use for send_instagram_message recipientId): ${context.sender.id}
 - User: ${userInfo}
-- Current Message ID (use for reactToInstagramMessage): ${context.currentMessage.id}
+- Current Message ID (use for react_to_instagram_message): ${context.currentMessage.id}
 - Conversation ID: ${context.conversationId}
 `;
 }

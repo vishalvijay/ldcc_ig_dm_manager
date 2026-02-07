@@ -45,7 +45,7 @@ const ReactToMessageOutputSchema = z.object({
 export function defineInstagramTools(ai: Genkit): ToolAction[] {
   const sendMessage = ai.defineTool(
     {
-      name: "sendInstagramMessage",
+      name: "send_instagram_message",
       description:
         "Send a message to the user on Instagram. Use this to reply to their inquiry. The message will be sent immediately.",
       inputSchema: SendMessageInputSchema,
@@ -65,7 +65,7 @@ export function defineInstagramTools(ai: Genkit): ToolAction[] {
 
   const reactToMessage = ai.defineTool(
     {
-      name: "reactToInstagramMessage",
+      name: "react_to_instagram_message",
       description:
         "React to a specific Instagram message with an emoji reaction. Use this to acknowledge messages, show appreciation, or express sentiment.",
       inputSchema: ReactToMessageInputSchema,

@@ -10,22 +10,26 @@ import { defineFirestoreTools } from "./firestore";
 import { defineInstagramTools } from "./instagram";
 import { defineWhatsAppTools } from "./whatsapp";
 
-// Cache tools to avoid re-registering on every invocation within the same process
-let cachedTools: ToolAction[] | null = null;
+// Cache the loading promise to avoid race conditions with concurrent requests
+let toolsPromise: Promise<ToolAction[]> | null = null;
 
 /**
  * Get all available tools for the AI agent.
  * Combines MCP tools (Spond) with locally defined tools (Firestore, Instagram, WhatsApp).
- * Tools are cached after first registration to avoid GenKit registry conflicts.
+ * Caches the loading promise so concurrent callers await the same registration,
+ * preventing "already registered" errors from GenKit.
  *
  * @param ai - The GenKit instance to register tools with
  * @returns Array of all available tool actions
  */
 export async function getAllTools(ai: Genkit): Promise<ToolAction[]> {
-  if (cachedTools) {
-    return cachedTools;
+  if (!toolsPromise) {
+    toolsPromise = loadAllTools(ai);
   }
+  return toolsPromise;
+}
 
+async function loadAllTools(ai: Genkit): Promise<ToolAction[]> {
   // Get MCP tools (external servers)
   const spondTools = await defineSpondTools(ai);
 
@@ -34,7 +38,7 @@ export async function getAllTools(ai: Genkit): Promise<ToolAction[]> {
   const instagramTools = defineInstagramTools(ai);
   const whatsappTools = defineWhatsAppTools(ai);
 
-  cachedTools = [
+  const allTools = [
     ...spondTools,
     ...firestoreTools,
     ...instagramTools,
@@ -42,10 +46,10 @@ export async function getAllTools(ai: Genkit): Promise<ToolAction[]> {
   ];
 
   console.log(
-    `Loaded ${cachedTools.length} tools: ${cachedTools.map((t) => t.__action.name).join(", ")}`
+    `Loaded ${allTools.length} tools: ${allTools.map((t) => t.__action.name).join(", ")}`
   );
 
-  return cachedTools;
+  return allTools;
 }
 
 // Re-export for convenience

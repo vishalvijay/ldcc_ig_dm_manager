@@ -144,7 +144,7 @@ export function defineWhatsAppTools(ai: Genkit): ToolAction[] {
    */
   const notifyBookingConfirmed = ai.defineTool(
     {
-      name: "notifyBookingConfirmed",
+      name: "notify_booking_confirmed",
       description:
         "Send a WhatsApp notification to the manager when a user confirms attendance at a net session. Use this after recording the booking.",
       inputSchema: NotifyBookingInputSchema,
@@ -174,7 +174,7 @@ export function defineWhatsAppTools(ai: Genkit): ToolAction[] {
    */
   const escalateToManager = ai.defineTool(
     {
-      name: "escalateToManager",
+      name: "escalate_to_manager",
       description:
         "Escalate a conversation to the manager for non-joining inquiries (sponsorship, merchandise, complaints, media requests) or unusual situations that need human attention. Do NOT respond to the user - just escalate.",
       inputSchema: EscalateToManagerInputSchema,

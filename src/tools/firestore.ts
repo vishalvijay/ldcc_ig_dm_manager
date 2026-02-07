@@ -103,7 +103,7 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 export function defineFirestoreTools(ai: Genkit): ToolAction[] {
   const getConversationHistory = ai.defineTool(
     {
-      name: "getConversationHistory",
+      name: "get_conversation_history",
       description:
         "Fetch the conversation history for a thread. Use this to understand the full context of a conversation.",
       inputSchema: GetConversationHistoryInputSchema,
@@ -147,7 +147,7 @@ export function defineFirestoreTools(ai: Genkit): ToolAction[] {
 
   const getUserProfile = ai.defineTool(
     {
-      name: "getUserProfile",
+      name: "get_user_profile",
       description:
         "Get a user's profile including their booking history and notification status. Use this to check if a user has booked sessions before.",
       inputSchema: GetUserProfileInputSchema,
@@ -176,7 +176,7 @@ export function defineFirestoreTools(ai: Genkit): ToolAction[] {
 
   const checkLastNotification = ai.defineTool(
     {
-      name: "checkLastNotification",
+      name: "check_last_notification",
       description:
         "Check if we can notify the manager about this user. There is a 7-day cooldown between notifications for the same user. ALWAYS call this before using the notifyManager action.",
       inputSchema: CheckLastNotificationInputSchema,
@@ -206,7 +206,7 @@ export function defineFirestoreTools(ai: Genkit): ToolAction[] {
 
   const recordBooking = ai.defineTool(
     {
-      name: "recordBooking",
+      name: "record_booking",
       description:
         "Record a booking when a user confirms they will attend a net session. Call this after the user confirms a session date.",
       inputSchema: RecordBookingInputSchema,
