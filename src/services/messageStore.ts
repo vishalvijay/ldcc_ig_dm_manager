@@ -20,8 +20,7 @@ const CONVERSATIONS_COLLECTION = "conversations";
 const MESSAGES_SUBCOLLECTION = "messages";
 
 // Debounce configuration
-const MIN_DELAY_SECONDS = 5;
-const MAX_DELAY_SECONDS = 15;
+const DELAY_SECONDS = 60;
 
 // Cloud Tasks configuration
 const PROJECT_ID = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || "";
@@ -30,16 +29,6 @@ const QUEUE_NAME = process.env.CLOUD_TASKS_QUEUE || "dm-processing";
 const PROCESS_MESSAGE_URL = process.env.PROCESS_MESSAGE_URL || "";
 // Default Firebase service account: {PROJECT_ID}@appspot.gserviceaccount.com
 const CLOUD_TASKS_SERVICE_ACCOUNT = PROJECT_ID ? `${PROJECT_ID}@appspot.gserviceaccount.com` : "";
-
-/**
- * Generate a random delay between MIN and MAX seconds.
- */
-function getRandomDelay(): number {
-  return (
-    Math.floor(Math.random() * (MAX_DELAY_SECONDS - MIN_DELAY_SECONDS + 1)) +
-    MIN_DELAY_SECONDS
-  );
-}
 
 /**
  * Store a message in Firestore.
@@ -81,8 +70,8 @@ export async function storeMessage(
 /**
  * Schedule message processing via Cloud Tasks.
  *
- * Uses a deduplication key based on threadId to avoid scheduling
- * multiple tasks for rapid messages in the same conversation.
+ * Uses a deduplication key based on threadId and a 60-second time window
+ * to avoid scheduling multiple tasks for rapid messages in the same conversation.
  *
  * @param threadId - The conversation thread ID
  * @param messageId - The triggering message ID
@@ -91,15 +80,17 @@ export async function scheduleProcessing(
   threadId: string,
   messageId: string
 ): Promise<void> {
-  const delaySeconds = getRandomDelay();
+  const now = Date.now();
 
   const client = new CloudTasksClient();
   const parent = client.queuePath(PROJECT_ID, LOCATION, QUEUE_NAME);
 
-  // Use threadId as deduplication key - only one task per thread at a time
-  const taskName = `${parent}/tasks/process-${threadId.replace(/[^a-zA-Z0-9-_]/g, "_")}`;
+  // Time window: 60-second buckets matching the delay
+  const timeWindow = Math.floor(now / 60000);
+  const sanitizedThreadId = threadId.replace(/[^a-zA-Z0-9-_]/g, "_");
+  const taskName = `${parent}/tasks/process-${sanitizedThreadId}-${timeWindow}`;
 
-  const scheduleTime = new Date(Date.now() + delaySeconds * 1000);
+  const scheduleTime = new Date(now + DELAY_SECONDS * 1000);
 
   const task: protos.google.cloud.tasks.v2.ITask = {
     name: taskName,
@@ -135,7 +126,8 @@ export async function scheduleProcessing(
     logger.info("Scheduled processing task", {
       threadId,
       messageId,
-      delaySeconds,
+      delaySeconds: DELAY_SECONDS,
+      timeWindow,
       scheduledFor: scheduleTime.toISOString(),
     });
   } catch (error) {
