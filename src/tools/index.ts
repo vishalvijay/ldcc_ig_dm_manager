@@ -4,14 +4,14 @@
  * Combines MCP tools (Spond) with locally defined tools (Firestore, Instagram, WhatsApp).
  */
 
-import { Genkit, ToolAction } from "genkit";
-import { defineSpondTools } from "./spond";
+import { Genkit, ToolAction, ToolArgument } from "genkit";
+import { initSpondMcp, SPOND_TOOL_REF } from "./spond";
 import { defineFirestoreTools } from "./firestore";
 import { defineInstagramTools } from "./instagram";
 import { defineWhatsAppTools } from "./whatsapp";
 
 // Cache the loading promise to avoid race conditions with concurrent requests
-let toolsPromise: Promise<ToolAction[]> | null = null;
+let toolsPromise: Promise<ToolArgument[]> | null = null;
 
 /**
  * Get all available tools for the AI agent.
@@ -20,40 +20,42 @@ let toolsPromise: Promise<ToolAction[]> | null = null;
  * preventing "already registered" errors from GenKit.
  *
  * @param ai - The GenKit instance to register tools with
- * @returns Array of all available tool actions
+ * @returns Array of all available tool arguments (ToolActions and string refs)
  */
-export async function getAllTools(ai: Genkit): Promise<ToolAction[]> {
+export async function getAllTools(ai: Genkit): Promise<ToolArgument[]> {
   if (!toolsPromise) {
     toolsPromise = loadAllTools(ai);
   }
   return toolsPromise;
 }
 
-async function loadAllTools(ai: Genkit): Promise<ToolAction[]> {
-  // Get MCP tools (external servers)
-  const spondTools = await defineSpondTools(ai);
+async function loadAllTools(ai: Genkit): Promise<ToolArgument[]> {
+  // Register Spond MCP as a Dynamic Action Provider (sync, no await needed)
+  initSpondMcp(ai);
 
   // Define local tools
   const firestoreTools = defineFirestoreTools(ai);
   const instagramTools = defineInstagramTools(ai);
   const whatsappTools = defineWhatsAppTools(ai);
 
-  const allTools = [
-    ...spondTools,
+  const localTools: ToolAction[] = [
     ...firestoreTools,
     ...instagramTools,
     ...whatsappTools,
   ];
 
+  const allTools: ToolArgument[] = [SPOND_TOOL_REF, ...localTools];
+
   console.log(
-    `Loaded ${allTools.length} tools: ${allTools.map((t) => t.__action.name).join(", ")}`
+    `Loaded ${localTools.length} local tools: ${localTools.map((t) => t.__action.name).join(", ")}; ` +
+      `MCP refs: ${SPOND_TOOL_REF}`
   );
 
   return allTools;
 }
 
 // Re-export for convenience
-export { defineSpondTools } from "./spond";
+export { initSpondMcp, SPOND_TOOL_REF } from "./spond";
 export { defineFirestoreTools } from "./firestore";
 export { defineInstagramTools } from "./instagram";
 export { defineWhatsAppTools } from "./whatsapp";
