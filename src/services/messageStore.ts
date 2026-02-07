@@ -278,7 +278,14 @@ export async function markProcessedAndCheckPending(
     .collection(MESSAGES_SUBCOLLECTION);
 
   const pendingMessages = await db.runTransaction(async (transaction) => {
-    // Mark all messages as processed
+    // All reads must come before writes in a Firestore transaction
+    const pendingSnapshot = await transaction.get(
+      messagesRef
+        .where("status", "==", MessageStatus.PENDING)
+        .orderBy("createdAt", "asc")
+    );
+
+    // Now perform writes: mark all messages as processed
     for (const messageId of messageIds) {
       const docRef = messagesRef.doc(messageId);
       transaction.update(docRef, {
@@ -287,13 +294,6 @@ export async function markProcessedAndCheckPending(
         processedAt: now,
       });
     }
-
-    // Check for any new pending messages
-    const pendingSnapshot = await transaction.get(
-      messagesRef
-        .where("status", "==", MessageStatus.PENDING)
-        .orderBy("createdAt", "asc")
-    );
 
     return pendingSnapshot.docs.map((doc) => doc.data() as StoredMessage);
   });

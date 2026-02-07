@@ -1,11 +1,11 @@
 /**
  * Instagram Service - Graph API client for Instagram messaging.
  *
- * Handles sending messages, reactions, and fetching thread history.
+ * Handles sending messages, reactions, and fetching user profiles.
  */
 
 import * as logger from "firebase-functions/logger";
-import { InstagramMessage, InstagramSender, ReactToMessageAction } from "../types";
+import { InstagramSender, ReactToMessageAction } from "../types";
 
 // Graph API version
 const GRAPH_API_VERSION = "v24.0";
@@ -25,17 +25,6 @@ interface GraphAPIError {
 
 interface SendMessageResponse extends GraphAPIError {
   message_id?: string;
-}
-
-interface ThreadMessagesResponse extends GraphAPIError {
-  messages?: {
-    data: Array<{
-      id: string;
-      message: string;
-      from: { id: string };
-      created_time: string;
-    }>;
-  };
 }
 
 interface UserProfileResponse extends GraphAPIError {
@@ -208,52 +197,6 @@ export class InstagramService {
     }
 
     logger.info("Sent Instagram reaction", { messageId, reaction });
-  }
-
-  /**
-   * Get messages from an Instagram conversation thread.
-   *
-   * @param threadId - The conversation thread ID
-   * @param limit - Maximum number of messages to fetch (default: 20)
-   * @returns Array of messages in chronological order
-   */
-  async getThreadMessages(
-    threadId: string,
-    limit = 20
-  ): Promise<InstagramMessage[]> {
-    const url = `${GRAPH_API_BASE}/${threadId}?fields=messages{id,message,from,created_time}&limit=${limit}`;
-    const response = await fetchWithRetry(url, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = (await response.json()) as GraphAPIError;
-      logger.error("Failed to fetch thread messages", {
-        status: response.status,
-        error: errorData,
-      });
-      throw new Error(
-        `Failed to fetch messages: ${errorData.error?.message || response.statusText}`
-      );
-    }
-
-    const data = (await response.json()) as ThreadMessagesResponse;
-    const messages = data.messages?.data || [];
-
-    // Transform to InstagramMessage format and reverse for chronological order
-    return messages
-      .map((m) => ({
-        id: m.id,
-        senderId: m.from.id,
-        recipientId: this.pageId,
-        text: m.message || "",
-        timestamp: new Date(m.created_time).getTime(),
-        messageType: "text" as const,
-      }))
-      .reverse();
   }
 
   /**

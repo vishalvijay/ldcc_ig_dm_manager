@@ -10,14 +10,22 @@ import { defineFirestoreTools } from "./firestore";
 import { defineInstagramTools } from "./instagram";
 import { defineWhatsAppTools } from "./whatsapp";
 
+// Cache tools to avoid re-registering on every invocation within the same process
+let cachedTools: ToolAction[] | null = null;
+
 /**
  * Get all available tools for the AI agent.
  * Combines MCP tools (Spond) with locally defined tools (Firestore, Instagram, WhatsApp).
+ * Tools are cached after first registration to avoid GenKit registry conflicts.
  *
  * @param ai - The GenKit instance to register tools with
  * @returns Array of all available tool actions
  */
 export async function getAllTools(ai: Genkit): Promise<ToolAction[]> {
+  if (cachedTools) {
+    return cachedTools;
+  }
+
   // Get MCP tools (external servers)
   const spondTools = await defineSpondTools(ai);
 
@@ -26,7 +34,7 @@ export async function getAllTools(ai: Genkit): Promise<ToolAction[]> {
   const instagramTools = defineInstagramTools(ai);
   const whatsappTools = defineWhatsAppTools(ai);
 
-  const allTools = [
+  cachedTools = [
     ...spondTools,
     ...firestoreTools,
     ...instagramTools,
@@ -34,10 +42,10 @@ export async function getAllTools(ai: Genkit): Promise<ToolAction[]> {
   ];
 
   console.log(
-    `Loaded ${allTools.length} tools: ${allTools.map((t) => t.__action.name).join(", ")}`
+    `Loaded ${cachedTools.length} tools: ${cachedTools.map((t) => t.__action.name).join(", ")}`
   );
 
-  return allTools;
+  return cachedTools;
 }
 
 // Re-export for convenience
