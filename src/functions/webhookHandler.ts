@@ -106,7 +106,7 @@ function transformToInstagramMessage(
     text: event.message.text || "",
     timestamp: event.timestamp,
     messageType: getMessageType(event.message),
-    replyToMessageId: event.message.reply_to?.mid,
+    ...(event.message.reply_to ? { replyToMessageId: event.message.reply_to.mid } : {}),
   };
 }
 
