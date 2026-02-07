@@ -9,100 +9,101 @@ npm run build           # Compile TypeScript to lib/
 npm run build:watch     # Watch mode compilation
 npm run lint            # Run ESLint on src/
 npm run lint:fix        # Auto-fix lint issues
-npm run serve           # Build and start Firebase emulators
+npm run serve           # Build and start Firebase emulators (functions + Firestore on ports 5001/8080)
 npm run deploy          # Deploy to Firebase Functions
 npm run logs            # View Firebase Functions logs
-npm run genkit:dev      # Start GenKit dev UI with hot reload
+npm run genkit:dev      # Start GenKit dev UI with hot reload (test dmAgent flow interactively)
 npm run genkit:flow:run # Run a specific GenKit flow
 ```
 
-## Testing Flows
-
-Use GenKit dev UI (`npm run genkit:dev`) to test the dmAgent flow interactively. The UI provides a visual interface to invoke flows with test inputs and inspect outputs.
+No automated test suite exists. Test flows manually via GenKit dev UI (`npm run genkit:dev`).
 
 ## Architecture
 
-This is an Instagram DM agent for London Desperados Cricket Club built on:
-- **Firebase Functions v2** - Serverless runtime
-- **Firebase GenKit** - AI orchestration framework
-- **Google AI (Gemini)** - LLM provider
-- **Firestore** - State management and message tracking
-- **Cloud Tasks** - Message debouncing with idempotency
+Instagram DM agent for London Desperados Cricket Club built on Firebase Functions v2, Firebase GenKit (AI orchestration), Google AI (Gemini 3 Flash Preview), Firestore (state management), and Cloud Tasks (message debouncing).
 
 ### Tool-Based Architecture
 
-The LLM orchestrates all conversations via tool calls. No hardcoded intent classification or state machines. The agent:
-1. Receives Instagram DMs via webhook (`webhookHandler.ts`)
-2. Stores message in Firestore, schedules Cloud Task with debounce delay (5-15s)
-3. Cloud Task triggers `processMessage.ts` which claims pending messages atomically
-4. LLM in `dmAgentFlow` decides actions and executes them directly via tool calls
-5. Tools handle Instagram/WhatsApp API calls and Firestore updates
-
-### Tool Categories
-
-- **MCP Tools** (`src/tools/spond.ts`) - Fetches net session dates from Spond via `@genkit-ai/mcp`
-- **Instagram Tools** (`src/tools/instagram.ts`) - sendInstagramMessage, reactToInstagramMessage
-- **WhatsApp Tools** (`src/tools/whatsapp.ts`) - notifyManager via WhatsApp Business API
-- **Firestore Tools** (`src/tools/firestore.ts`) - Conversation state management
+The LLM orchestrates all conversations via tool calls — no hardcoded intent classification or state machines. The agent:
+1. Receives Instagram DMs via webhook (`webhookHandler.ts`) with HMAC-SHA256 signature validation
+2. Stores message in Firestore as `pending`, schedules Cloud Task with 60s debounce delay
+3. Cloud Task triggers `processMessage.ts` which claims pending messages atomically via Firestore transaction
+4. LLM in `dmAgentFlow` decides actions and calls tools directly (auto tool execution by GenKit)
+5. After processing, atomically checks for new pending messages and schedules follow-up task if needed
 
 ### Message Flow
 
 ```
-Instagram Webhook → Firestore (store message) → Cloud Tasks (debounce)
-→ processMessage (claim pending) → dmAgent Flow (LLM + tools) → APIs
+Instagram Webhook → Firestore (store as pending) → Cloud Tasks (60s debounce)
+→ processMessage (atomic claim via transaction) → dmAgent Flow (LLM + tools) → APIs
+→ markProcessedAndCheckPending → schedule follow-up if new messages arrived
 ```
 
-### Message States
+### Tool Categories
 
-Messages tracked in Firestore: `pending` → `processing` → `processed` (or `failed`)
+- **MCP Tools** (`src/tools/spond.ts`) — Net session dates from Spond via `@genkit-ai/mcp`
+- **Instagram Tools** (`src/tools/instagram.ts`) — sendInstagramMessage, reactToInstagramMessage, getThreadMessages, isNewThread
+- **WhatsApp Tools** (`src/tools/whatsapp.ts`) — notifyBookingConfirmed, escalateToManager (via WhatsApp Business API templates)
+- **Firestore Tools** (`src/tools/firestore.ts`) — getConversationHistory, getUserProfile, checkLastNotification, recordBooking
 
 ### Firestore Collections
 
-- `threads/{threadId}/messages/{messageId}` - Individual messages with status
-- Uses composite indexes for querying by status (see `firestore.indexes.json`)
+- `conversations/{threadId}/messages/{messageId}` — Individual messages with status tracking
+- `users/{userId}` — User profiles, booking history, last notification timestamp
+- `bookings/{bookingId}` — Standalone booking records
+- Composite indexes required for status queries (see `firestore.indexes.json`, deploy with `firebase deploy --only firestore:indexes`)
+
+### Message States
+
+`pending` → `processing` → `processed` (or `failed`)
+
+### Concurrency Control
+
+- **Debouncing**: Cloud Tasks with time-window-based naming (60s buckets) prevents duplicate tasks per thread
+- **Atomic claiming**: Firestore transaction checks no messages are already `processing` before claiming `pending` ones
+- **Follow-up scheduling**: After processing, atomically marks messages processed and checks for new pending ones
 
 ## Key Files
 
-- `src/flows/dmAgent.ts` - Main GenKit flow with LLM and tool orchestration
-- `src/prompts/system.ts` - System prompt with club knowledge and behavioral guidelines
-- `src/config.ts` - Environment variable configuration and validation
-- `src/tools/index.ts` - Tool registry combining MCP and local tools
-- `src/tools/*.ts` - Individual tool definitions (instagram, whatsapp, firestore, spond)
-- `src/types/index.ts` - Zod schemas for messages, actions, and webhook payloads
-- `src/functions/webhookHandler.ts` - Instagram webhook with signature validation
-- `src/functions/processMessage.ts` - Cloud Task callback with OIDC auth
-- `src/services/messageStore.ts` - Firestore operations with atomic claims
-- `src/services/instagram.ts` - Instagram Graph API client
+- `src/flows/dmAgent.ts` — Main GenKit flow with LLM and tool orchestration
+- `src/prompts/system.ts` — System prompt with club knowledge and behavioral guidelines
+- `src/config/genkit.ts` — GenKit + Gemini model configuration
+- `src/tools/index.ts` — Tool registry combining MCP and local tools
+- `src/types/index.ts` — Zod schemas and TypeScript interfaces for messages, actions, webhooks
+- `src/functions/webhookHandler.ts` — Instagram webhook with HMAC signature validation
+- `src/functions/processMessage.ts` — Cloud Task callback with OIDC auth validation
+- `src/services/messageStore.ts` — Firestore operations, atomic claims, Cloud Tasks scheduling
+- `src/services/instagram.ts` — Instagram Graph API client with retry/rate-limit handling
 
 ## Environment Variables
 
-Required in `.env` or Firebase config:
-- `GOOGLE_API_KEY` - Gemini API key
+Required in `.env` (see `.env.example` for template):
+- `GOOGLE_API_KEY` — Gemini API key
 - `META_MESSENGER_ACCESS_TOKEN`, `META_MESSENGER_PAGE_ID`, `META_MESSENGER_VERIFY_TOKEN`, `META_MESSENGER_APP_SECRET`
 - `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`
-- `WHATSAPP_BOOKING_TEMPLATE`, `WHATSAPP_ESCALATION_TEMPLATE` - WhatsApp message template names
-- `MANAGER_WHATSAPP_NUMBER` - For notifications
-- `NET_SESSION_COORDINATOR` - Contact info for net session queries
-- `PROCESS_MESSAGE_URL` - Cloud Tasks callback URL (for OIDC audience validation)
-- `CLOUD_TASKS_QUEUE` - Cloud Tasks queue name
+- `WHATSAPP_BOOKING_TEMPLATE`, `WHATSAPP_ESCALATION_TEMPLATE` — WhatsApp message template names
+- `MANAGER_WHATSAPP_NUMBER` — For notifications
+- `NET_SESSION_COORDINATOR` — Contact info for net session queries
+- `PROCESS_MESSAGE_URL` — Cloud Tasks callback URL (also used as OIDC audience)
+- `CLOUD_TASKS_QUEUE` — Cloud Tasks queue name
 
 Optional:
-- `TEST_MODE_SENDER_ID` - When set, only accept messages from this sender ID (for testing)
+- `TEST_MODE_SENDER_ID` — When set, only accept messages from this sender ID (for testing)
+- `CLOUD_FUNCTIONS_REGION` — Defaults to `europe-west2`
 
 ## Deployment
 
-Functions deploy to `europe-west2` region by default (configurable via `CLOUD_FUNCTIONS_REGION` env var).
+CI/CD: Pushing to `main` triggers automatic deployment via GitHub Actions (`.github/workflows/deploy-firebase.yml`).
 
 ```bash
 npm run deploy                              # Deploy functions
-firebase deploy --only firestore:indexes   # Deploy Firestore indexes (required for queries)
+firebase deploy --only firestore:indexes   # Deploy Firestore indexes (required for status queries)
 ```
-
-CI/CD: Pushing to `main` branch triggers automatic deployment via GitHub Actions (`.github/workflows/deploy-firebase.yml`).
 
 ## Domain Context
 
-See PROJECT.md for club information, agent behavior requirements, and conversation flow guidelines. Key points:
-- Agent acts as Vishal (social media manager)
-- Progressive information reveal (don't share all details upfront)
-- Only respond to joining inquiries; notify manager for other intents
+- Agent acts as Vishal (social media manager) for London Desperados Cricket Club
+- Progressive information reveal (don't share all details upfront) — controlled by system prompt in `src/prompts/system.ts`
+- Only respond to joining inquiries; notify manager via WhatsApp for other intents
+- Booking flow: interest → session dates (from Spond) → location → name/phone → confirmation
+- All club knowledge (leagues, achievements, net session details, tone guidelines) lives in the system prompt
