@@ -4,6 +4,7 @@
  * Combines MCP tools (Spond) with locally defined tools (Firestore, Instagram, WhatsApp).
  */
 
+import { z } from "zod";
 import { Genkit, ToolAction, ToolArgument } from "genkit";
 import { initSpondMcp, SPOND_TOOL_REF } from "./spond";
 import { defineFirestoreTools } from "./firestore";
@@ -38,10 +39,25 @@ async function loadAllTools(ai: Genkit): Promise<ToolArgument[]> {
   const instagramTools = defineInstagramTools(ai);
   const whatsappTools = defineWhatsAppTools(ai);
 
+  // No-op tool for when the LLM decides no response is needed
+  const noAction = ai.defineTool(
+    {
+      name: "no_action",
+      description:
+        "Use when no response is needed — e.g. user just reacted to your message, duplicate/spam messages, or the conversation already ends with your message.",
+      inputSchema: z.object({
+        reason: z.string().optional().describe("Why no action is needed"),
+      }),
+      outputSchema: z.object({ success: z.literal(true) }),
+    },
+    async () => ({ success: true as const })
+  );
+
   const localTools: ToolAction[] = [
     ...firestoreTools,
     ...instagramTools,
     ...whatsappTools,
+    noAction,
   ];
 
   const allTools: ToolArgument[] = [SPOND_TOOL_REF, ...localTools];

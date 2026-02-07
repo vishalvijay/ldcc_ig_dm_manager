@@ -118,7 +118,7 @@ Use when:
 Use when:
 - Booking is confirmed (notify manager with details)
 
-### noAction
+### no_action
 Use when:
 - Message doesn't require a response (e.g., user just reacted to your message)
 - Duplicate or spam messages
