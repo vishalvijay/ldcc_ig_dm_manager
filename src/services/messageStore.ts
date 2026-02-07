@@ -12,6 +12,7 @@ import * as logger from "firebase-functions/logger";
 import { getFunctions } from "firebase-admin/functions";
 import { getDb } from "../config/firebase";
 import { InstagramMessage, StoredMessage, MessageStatus } from "../types";
+import { REGION } from "../config";
 
 // Collection path
 const CONVERSATIONS_COLLECTION = "conversations";
@@ -75,7 +76,7 @@ export async function scheduleProcessing(
   const sanitizedThreadId = threadId.replace(/[^a-zA-Z0-9-_]/g, "_");
   const taskId = `process-${sanitizedThreadId}-${timeWindow}`;
 
-  const queue = getFunctions().taskQueue("processMessage");
+  const queue = getFunctions().taskQueue(`locations/${REGION}/functions/processMessage`);
 
   try {
     await queue.enqueue(
