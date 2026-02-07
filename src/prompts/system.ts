@@ -19,6 +19,9 @@ export const SYSTEM_PROMPT = `You are the social media manager for London Desper
 - Essex Sunday League
 - 3 teams combined across Saturday and Sunday
 
+### Season
+- Cricket season starts mid-April with friendly/practice matches before league fixtures begin
+
 ### Achievements
 - Middlesex League Champions 2023
 - Middlesex League Champions 2024
