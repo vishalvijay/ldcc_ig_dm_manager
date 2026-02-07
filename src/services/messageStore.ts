@@ -20,7 +20,7 @@ const CONVERSATIONS_COLLECTION = "conversations";
 const MESSAGES_SUBCOLLECTION = "messages";
 
 // Debounce configuration
-const DELAY_SECONDS = 60;
+const DELAY_SECONDS = parseInt(process.env.DEBOUNCE_DELAY_SECONDS || "60", 10);
 
 // Cloud Tasks configuration
 const PROJECT_ID = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || "";
@@ -85,8 +85,8 @@ export async function scheduleProcessing(
   const client = new CloudTasksClient();
   const parent = client.queuePath(PROJECT_ID, LOCATION, QUEUE_NAME);
 
-  // Time window: 60-second buckets matching the delay
-  const timeWindow = Math.floor(now / 60000);
+  // Time window: buckets matching the delay
+  const timeWindow = Math.floor(now / (DELAY_SECONDS * 1000));
   const sanitizedThreadId = threadId.replace(/[^a-zA-Z0-9-_]/g, "_");
   const taskName = `${parent}/tasks/process-${sanitizedThreadId}-${timeWindow}`;
 
