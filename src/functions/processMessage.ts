@@ -170,7 +170,7 @@ export const processMessage = onRequest(
 
       // Get conversation history and user profile
       const instagram = getInstagramService();
-      const pageId = process.env.INSTAGRAM_PAGE_ID || "";
+      const pageId = process.env.META_MESSENGER_PAGE_ID || "";
 
       const history = await getConversationHistory(threadId, 50);
       const conversationHistory = buildConversationHistory(history, pageId);

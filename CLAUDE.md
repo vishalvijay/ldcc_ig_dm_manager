@@ -78,7 +78,7 @@ Messages tracked in Firestore: `pending` → `processing` → `processed` (or `f
 
 Required in `.env` or Firebase config:
 - `GOOGLE_API_KEY` - Gemini API key
-- `INSTAGRAM_ACCESS_TOKEN`, `INSTAGRAM_PAGE_ID`, `INSTAGRAM_VERIFY_TOKEN`, `INSTAGRAM_APP_SECRET`
+- `META_MESSENGER_ACCESS_TOKEN`, `META_MESSENGER_PAGE_ID`, `META_MESSENGER_VERIFY_TOKEN`, `META_MESSENGER_APP_SECRET`
 - `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`
 - `WHATSAPP_BOOKING_TEMPLATE`, `WHATSAPP_ESCALATION_TEMPLATE` - WhatsApp message template names
 - `MANAGER_WHATSAPP_NUMBER` - For notifications
@@ -87,7 +87,7 @@ Required in `.env` or Firebase config:
 - `CLOUD_TASKS_QUEUE` - Cloud Tasks queue name
 
 Optional:
-- `TEST_MODE_USERNAME` - When set, only accept messages from this Instagram username (for testing)
+- `TEST_MODE_SENDER_ID` - When set, only accept messages from this sender ID (for testing)
 
 ## Deployment
 

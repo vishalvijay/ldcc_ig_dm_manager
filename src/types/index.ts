@@ -123,10 +123,10 @@ export interface StoredMessage {
 }
 
 // =============================================================================
-// Instagram Webhook Types (API v24+)
+// Instagram Webhook Types (Messenger Platform format)
 // =============================================================================
 
-export interface InstagramWebhookAttachment {
+export interface MetaMessengerWebhookAttachment {
   type:
     | "image"
     | "video"
@@ -145,10 +145,10 @@ export interface InstagramWebhookAttachment {
   };
 }
 
-export interface InstagramWebhookMessage {
+export interface MetaMessengerWebhookMessage {
   mid: string;
   text?: string;
-  attachments?: InstagramWebhookAttachment[];
+  attachments?: MetaMessengerWebhookAttachment[];
   is_echo?: boolean;
   reply_to?: {
     mid: string;
@@ -158,20 +158,20 @@ export interface InstagramWebhookMessage {
   };
 }
 
-export interface InstagramWebhookReaction {
+export interface MetaMessengerWebhookReaction {
   mid: string;
   action: "react" | "unreact";
   reaction?: string;
   emoji?: string;
 }
 
-export interface InstagramWebhookPostback {
+export interface MetaMessengerWebhookPostback {
   mid: string;
   title: string;
   payload: string;
 }
 
-export interface InstagramWebhookReferral {
+export interface MetaMessengerWebhookReferral {
   ref?: string;
   source?: string;
   type?: string;
@@ -179,69 +179,29 @@ export interface InstagramWebhookReferral {
 }
 
 /**
- * Webhook field types for Instagram messaging.
- * See: https://developers.facebook.com/docs/instagram-platform/webhooks
- */
-export type InstagramWebhookField =
-  | "messages" // Incoming messages
-  | "message_echoes" // Sent message echoes (included in messages subscription)
-  | "message_reactions" // Reactions to messages
-  | "messaging_handover" // Handover protocol events
-  | "messaging_optins" // User opt-in events
-  | "messaging_postbacks" // Button/quick reply postbacks
-  | "messaging_referral" // Referral events (ads, m.me links)
-  | "messaging_seen" // Read receipts
-  | "standby"; // Standby channel events
-
-/**
- * The value object within a webhook change event.
- */
-export interface InstagramWebhookChangeValue {
-  sender: { id: string };
-  recipient: { id: string };
-  timestamp: string;
-  message?: InstagramWebhookMessage;
-  reaction?: InstagramWebhookReaction;
-  read?: { watermark: number };
-  postback?: InstagramWebhookPostback;
-  referral?: InstagramWebhookReferral;
-}
-
-/**
- * API v24+ uses a changes-based format for messaging webhooks.
- */
-export interface InstagramWebhookChange {
-  field: InstagramWebhookField;
-  value: InstagramWebhookChangeValue;
-}
-
-/**
- * Legacy messaging format (pre-v24) event object.
+ * Messenger Platform messaging event object.
  * Used in entry.messaging[] array.
  */
-export interface InstagramWebhookMessagingEvent {
+export interface MetaMessengerWebhookMessagingEvent {
   sender: { id: string };
   recipient: { id: string };
   timestamp: number;
-  message?: InstagramWebhookMessage;
-  reaction?: InstagramWebhookReaction;
+  message?: MetaMessengerWebhookMessage;
+  reaction?: MetaMessengerWebhookReaction;
   read?: { mid: string };
-  postback?: InstagramWebhookPostback;
-  referral?: InstagramWebhookReferral;
+  postback?: MetaMessengerWebhookPostback;
+  referral?: MetaMessengerWebhookReferral;
 }
 
-export interface InstagramWebhookEntry {
+export interface MetaMessengerWebhookEntry {
   id: string;
   time: number;
-  /** API v24+ format */
-  changes?: InstagramWebhookChange[];
-  /** Legacy format (pre-v24) */
-  messaging?: InstagramWebhookMessagingEvent[];
+  messaging?: MetaMessengerWebhookMessagingEvent[];
 }
 
-export interface InstagramWebhookPayload {
+export interface MetaMessengerWebhookPayload {
   object: "instagram";
-  entry: InstagramWebhookEntry[];
+  entry: MetaMessengerWebhookEntry[];
 }
 
 // =============================================================================

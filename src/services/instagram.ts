@@ -8,8 +8,8 @@ import * as logger from "firebase-functions/logger";
 import { InstagramMessage, InstagramSender, ReactToMessageAction } from "../types";
 
 // Graph API version
-const GRAPH_API_VERSION = "v22.0";
-const GRAPH_API_BASE = `https://graph.instagram.com/${GRAPH_API_VERSION}`;
+const GRAPH_API_VERSION = "v24.0";
+const GRAPH_API_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
 
 // Retry configuration
 const MAX_RETRIES = 3;
@@ -121,12 +121,12 @@ export class InstagramService {
   private pageId: string;
 
   constructor() {
-    this.accessToken = process.env.INSTAGRAM_ACCESS_TOKEN || "";
-    this.pageId = process.env.INSTAGRAM_PAGE_ID || "";
+    this.accessToken = process.env.META_MESSENGER_ACCESS_TOKEN || "";
+    this.pageId = process.env.META_MESSENGER_PAGE_ID || "";
 
     if (!this.accessToken || !this.pageId) {
       logger.warn(
-        "Instagram credentials not configured. Set INSTAGRAM_ACCESS_TOKEN and INSTAGRAM_PAGE_ID."
+        "Instagram credentials not configured. Set META_MESSENGER_ACCESS_TOKEN and META_MESSENGER_PAGE_ID."
       );
     }
   }

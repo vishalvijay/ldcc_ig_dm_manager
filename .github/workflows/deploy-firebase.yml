@@ -29,10 +29,10 @@ jobs:
       - name: Create .env file
         run: |
           echo "GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}" >> .env
-          echo "INSTAGRAM_ACCESS_TOKEN=${{ secrets.INSTAGRAM_ACCESS_TOKEN }}" >> .env
-          echo "INSTAGRAM_PAGE_ID=${{ vars.INSTAGRAM_PAGE_ID }}" >> .env
-          echo "INSTAGRAM_VERIFY_TOKEN=${{ secrets.INSTAGRAM_VERIFY_TOKEN }}" >> .env
-          echo "INSTAGRAM_APP_SECRET=${{ secrets.INSTAGRAM_APP_SECRET }}" >> .env
+          echo "META_MESSENGER_ACCESS_TOKEN=${{ secrets.META_MESSENGER_ACCESS_TOKEN }}" >> .env
+          echo "META_MESSENGER_PAGE_ID=${{ vars.META_MESSENGER_PAGE_ID }}" >> .env
+          echo "META_MESSENGER_VERIFY_TOKEN=${{ secrets.META_MESSENGER_VERIFY_TOKEN }}" >> .env
+          echo "META_MESSENGER_APP_SECRET=${{ secrets.META_MESSENGER_APP_SECRET }}" >> .env
           echo "WHATSAPP_ACCESS_TOKEN=${{ secrets.WHATSAPP_ACCESS_TOKEN }}" >> .env
           echo "WHATSAPP_PHONE_NUMBER_ID=${{ vars.WHATSAPP_PHONE_NUMBER_ID }}" >> .env
           echo "MANAGER_WHATSAPP_NUMBER=${{ vars.MANAGER_WHATSAPP_NUMBER }}" >> .env
@@ -43,7 +43,7 @@ jobs:
           echo "CLOUD_TASKS_QUEUE=${{ vars.CLOUD_TASKS_QUEUE }}" >> .env
           echo "CLOUD_FUNCTIONS_REGION=${{ vars.CLOUD_FUNCTIONS_REGION }}" >> .env
           echo "ENABLE_FIREBASE_MONITORING=${{ vars.ENABLE_FIREBASE_MONITORING }}" >> .env
-          echo "TEST_MODE_USERNAME=${{ vars.TEST_MODE_USERNAME }}" >> .env
+          echo "TEST_MODE_SENDER_ID=${{ vars.TEST_MODE_SENDER_ID }}" >> .env
 
       - name: Deploy Cloud Functions
         run: firebase deploy --only functions --project ${{ vars.FIREBASE_PROJECT_ID }} --force

@@ -8,22 +8,19 @@ import * as crypto from "crypto";
 import * as logger from "firebase-functions/logger";
 import { onRequest } from "firebase-functions/v2/https";
 import {
-  InstagramWebhookPayload,
-  InstagramWebhookAttachment,
-  InstagramWebhookChangeValue,
-  InstagramWebhookMessage,
-  InstagramWebhookMessagingEvent,
-  InstagramWebhookEntry,
+  MetaMessengerWebhookPayload,
+  MetaMessengerWebhookAttachment,
+  MetaMessengerWebhookMessage,
+  MetaMessengerWebhookMessagingEvent,
   InstagramMessage,
 } from "../types";
 import { storeMessage, scheduleProcessing } from "../services/messageStore";
-import { getInstagramService } from "../services/instagram";
-import { REGION, TEST_MODE_USERNAME } from "../config";
+import { REGION, TEST_MODE_SENDER_ID } from "../config";
 
 // Environment variables
-const INSTAGRAM_VERIFY_TOKEN = process.env.INSTAGRAM_VERIFY_TOKEN || "";
-const INSTAGRAM_APP_SECRET = process.env.INSTAGRAM_APP_SECRET || "";
-const INSTAGRAM_PAGE_ID = process.env.INSTAGRAM_PAGE_ID || "";
+const META_MESSENGER_VERIFY_TOKEN = process.env.META_MESSENGER_VERIFY_TOKEN || "";
+const META_MESSENGER_APP_SECRET = process.env.META_MESSENGER_APP_SECRET || "";
+const META_MESSENGER_PAGE_ID = process.env.META_MESSENGER_PAGE_ID || "";
 
 /**
  * Validate X-Hub-Signature-256 header.
@@ -32,7 +29,7 @@ function validateSignature(
   payload: string,
   signature: string | undefined
 ): boolean {
-  if (!signature || !INSTAGRAM_APP_SECRET) {
+  if (!signature || !META_MESSENGER_APP_SECRET) {
     logger.warn("Missing signature or app secret");
     return false;
   }
@@ -40,7 +37,7 @@ function validateSignature(
   const expectedSignature =
     "sha256=" +
     crypto
-      .createHmac("sha256", INSTAGRAM_APP_SECRET)
+      .createHmac("sha256", META_MESSENGER_APP_SECRET)
       .update(payload)
       .digest("hex");
 
@@ -58,13 +55,13 @@ function validateSignature(
  * Determine message type from webhook message object.
  */
 function getMessageType(
-  message: InstagramWebhookMessage | undefined
+  message: MetaMessengerWebhookMessage | undefined
 ): InstagramMessage["messageType"] {
   if (!message) return "other";
 
   if (message.attachments && message.attachments.length > 0) {
     const firstAttachment = message.attachments[0];
-    const attachmentType = firstAttachment?.type as InstagramWebhookAttachment["type"];
+    const attachmentType = firstAttachment?.type as MetaMessengerWebhookAttachment["type"];
 
     switch (attachmentType) {
       case "story_mention":
@@ -95,119 +92,74 @@ function getMessageType(
 }
 
 /**
- * Transform webhook change value to InstagramMessage.
+ * Transform webhook messaging event to InstagramMessage.
  */
 function transformToInstagramMessage(
-  value: InstagramWebhookChangeValue
+  event: MetaMessengerWebhookMessagingEvent
 ): InstagramMessage | null {
-  if (!value.message) return null;
+  if (!event.message) return null;
 
   return {
-    id: value.message.mid,
-    senderId: value.sender.id,
-    recipientId: value.recipient.id,
-    text: value.message.text || "",
-    timestamp: parseInt(value.timestamp, 10),
-    messageType: getMessageType(value.message),
-    replyToMessageId: value.message.reply_to?.mid,
+    id: event.message.mid,
+    senderId: event.sender.id,
+    recipientId: event.recipient.id,
+    text: event.message.text || "",
+    timestamp: event.timestamp,
+    messageType: getMessageType(event.message),
+    replyToMessageId: event.message.reply_to?.mid,
   };
-}
-
-/**
- * Convert legacy messaging event to change value format.
- */
-function legacyEventToChangeValue(event: InstagramWebhookMessagingEvent): InstagramWebhookChangeValue {
-  return {
-    sender: event.sender,
-    recipient: event.recipient,
-    timestamp: String(event.timestamp),
-    message: event.message,
-    reaction: event.reaction,
-    read: event.read ? { watermark: 0 } : undefined,
-    postback: event.postback,
-    referral: event.referral,
-  };
-}
-
-/**
- * Extract messaging change values from an entry.
- * Handles both API v24+ (changes) and legacy (messaging) formats.
- */
-function getMessagingEvents(entry: InstagramWebhookEntry): InstagramWebhookChangeValue[] {
-  // Handle API v24+ format with changes array
-  if (entry.changes && entry.changes.length > 0) {
-    // Filter for messaging-related fields that we want to process
-    const messagingFields = new Set([
-      "messages",
-      "message_reactions",
-      "messaging_postbacks",
-      "messaging_referral",
-      "messaging_seen",
-    ]);
-
-    return entry.changes
-      .filter(change => messagingFields.has(change.field))
-      .map(change => change.value);
-  }
-
-  // Handle legacy format with messaging array
-  if (entry.messaging && entry.messaging.length > 0) {
-    return entry.messaging.map(legacyEventToChangeValue);
-  }
-
-  return [];
 }
 
 /**
  * Check if this event should be processed.
  * Filters out echoes, reactions, read receipts, and messages from our page.
  */
-function shouldProcessEvent(value: InstagramWebhookChangeValue): boolean {
+function shouldProcessEvent(event: MetaMessengerWebhookMessagingEvent): boolean {
   // Skip echo messages (sent by us)
-  if (value.message?.is_echo) {
+  if (event.message?.is_echo) {
     logger.debug("Skipping echo message");
     return false;
   }
 
   // Skip reaction events
-  if (value.reaction) {
+  if (event.reaction) {
     logger.debug("Skipping reaction event");
     return false;
   }
 
   // Skip read receipt events
-  if (value.read) {
+  if (event.read) {
     logger.debug("Skipping read receipt event");
     return false;
   }
 
   // Skip postback events (button clicks) - log for now
-  if (value.postback) {
+  if (event.postback) {
     logger.info("Received postback event", {
-      title: value.postback.title,
-      payload: value.postback.payload,
+      title: event.postback.title,
+      payload: event.postback.payload,
     });
     return false;
   }
 
   // Log referral events but don't skip if there's also a message
-  if (value.referral) {
+  if (event.referral) {
     logger.info("Received referral event", {
-      source: value.referral.source,
-      type: value.referral.type,
-      ref: value.referral.ref,
+      source: event.referral.source,
+      type: event.referral.type,
+      ref: event.referral.ref,
     });
     // Continue processing if there's a message attached
   }
 
   // Skip if no message content
-  if (!value.message) {
+  if (!event.message) {
     logger.debug("Skipping event with no message");
     return false;
   }
 
   // Skip messages from our own page
-  if (value.sender.id === INSTAGRAM_PAGE_ID) {
+  if (event.sender.id === META_MESSENGER_PAGE_ID) {
     logger.debug("Skipping message from our page");
     return false;
   }
@@ -217,34 +169,23 @@ function shouldProcessEvent(value: InstagramWebhookChangeValue): boolean {
 
 /**
  * Check if sender is allowed in test mode.
- * Returns true if test mode is disabled or if the sender's username matches.
+ * Returns true if test mode is disabled or if the sender ID matches.
  */
-async function isAllowedInTestMode(senderId: string): Promise<boolean> {
-  if (!TEST_MODE_USERNAME) {
+function isAllowedInTestMode(senderId: string): boolean {
+  if (!TEST_MODE_SENDER_ID) {
     return true;
   }
 
-  try {
-    const instagram = getInstagramService();
-    const profile = await instagram.getUserProfile(senderId);
-    const allowed = profile.username === TEST_MODE_USERNAME;
+  const allowed = senderId === TEST_MODE_SENDER_ID;
 
-    if (!allowed) {
-      logger.info("Test mode: skipping message from non-allowed user", {
-        senderId,
-        username: profile.username,
-        allowedUsername: TEST_MODE_USERNAME,
-      });
-    }
-
-    return allowed;
-  } catch (error) {
-    logger.warn("Test mode: could not verify username, skipping message", {
+  if (!allowed) {
+    logger.info("Test mode: skipping message from non-allowed sender", {
       senderId,
-      error: error instanceof Error ? error.message : "Unknown error",
+      allowedSenderId: TEST_MODE_SENDER_ID,
     });
-    return false;
   }
+
+  return allowed;
 }
 
 /**
@@ -272,13 +213,13 @@ export const instagramWebhook = onRequest(
         challenge: !!challenge,
       });
 
-      if (mode === "subscribe" && token === INSTAGRAM_VERIFY_TOKEN) {
+      if (mode === "subscribe" && token === META_MESSENGER_VERIFY_TOKEN) {
         logger.info("Webhook verified successfully");
         res.status(200).send(challenge);
       } else {
         logger.warn("Webhook verification failed", {
           modeMatch: mode === "subscribe",
-          tokenMatch: token === INSTAGRAM_VERIFY_TOKEN,
+          tokenMatch: token === META_MESSENGER_VERIFY_TOKEN,
         });
         res.status(403).send("Forbidden");
       }
@@ -308,7 +249,7 @@ export const instagramWebhook = onRequest(
 
     // Validate signature (skip in emulator/development)
     if (
-      INSTAGRAM_APP_SECRET &&
+      META_MESSENGER_APP_SECRET &&
       process.env.FUNCTIONS_EMULATOR !== "true"
     ) {
       if (!validateSignature(rawBody, signature)) {
@@ -319,7 +260,7 @@ export const instagramWebhook = onRequest(
     }
 
     // Parse payload
-    let payload: InstagramWebhookPayload;
+    let payload: MetaMessengerWebhookPayload;
     try {
       payload = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
     } catch (error) {
@@ -341,7 +282,7 @@ export const instagramWebhook = onRequest(
 
     // Process each entry
     for (const entry of payload.entry || []) {
-      const events = getMessagingEvents(entry);
+      const events = entry.messaging || [];
 
       logger.debug("Processing webhook entry", {
         entryId: entry.id,
@@ -366,7 +307,7 @@ export const instagramWebhook = onRequest(
         const threadId = event.sender.id;
 
         // Check test mode filter
-        if (!(await isAllowedInTestMode(threadId))) {
+        if (!isAllowedInTestMode(threadId)) {
           continue;
         }
 
