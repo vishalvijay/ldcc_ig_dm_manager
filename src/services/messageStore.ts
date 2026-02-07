@@ -307,6 +307,44 @@ export async function markProcessedAndCheckPending(
 }
 
 /**
+ * Delete all conversation data for a thread and its associated user profile.
+ *
+ * Deletes all messages in the conversation subcollection, the conversation
+ * document itself, and the user profile document. Used for testing resets.
+ *
+ * @param threadId - The conversation thread ID (also the sender/user ID)
+ */
+export async function deleteConversationData(threadId: string): Promise<void> {
+  const db = getDb();
+
+  // Delete all messages in the subcollection
+  const messagesRef = db
+    .collection(CONVERSATIONS_COLLECTION)
+    .doc(threadId)
+    .collection(MESSAGES_SUBCOLLECTION);
+
+  const messagesSnapshot = await messagesRef.get();
+  if (!messagesSnapshot.empty) {
+    const batch = db.batch();
+    for (const doc of messagesSnapshot.docs) {
+      batch.delete(doc.ref);
+    }
+    await batch.commit();
+  }
+
+  // Delete the conversation document
+  await db.collection(CONVERSATIONS_COLLECTION).doc(threadId).delete();
+
+  // Delete the user profile
+  await db.collection("users").doc(threadId).delete();
+
+  logger.info("Deleted conversation data for reset", {
+    threadId,
+    messagesDeleted: messagesSnapshot.size,
+  });
+}
+
+/**
  * Get conversation history from Firestore.
  *
  * @param threadId - The conversation thread ID

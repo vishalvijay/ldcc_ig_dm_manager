@@ -44,6 +44,7 @@ jobs:
           echo "CLOUD_FUNCTIONS_REGION=${{ vars.CLOUD_FUNCTIONS_REGION }}" >> .env
           echo "ENABLE_FIREBASE_MONITORING=${{ vars.ENABLE_FIREBASE_MONITORING }}" >> .env
           echo "TEST_MODE_SENDER_ID=${{ vars.TEST_MODE_SENDER_ID }}" >> .env
+          echo "RESET_KEYWORD=${{ secrets.RESET_KEYWORD }}" >> .env
 
       - name: Deploy Cloud Functions
         run: firebase deploy --only functions --project ${{ vars.FIREBASE_PROJECT_ID }} --force

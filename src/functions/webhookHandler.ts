@@ -14,8 +14,8 @@ import {
   MetaMessengerWebhookMessagingEvent,
   InstagramMessage,
 } from "../types";
-import { storeMessage, scheduleProcessing } from "../services/messageStore";
-import { REGION, TEST_MODE_SENDER_ID } from "../config";
+import { storeMessage, scheduleProcessing, deleteConversationData } from "../services/messageStore";
+import { REGION, TEST_MODE_SENDER_ID, RESET_KEYWORD } from "../config";
 
 // Environment variables
 const META_MESSENGER_VERIFY_TOKEN = process.env.META_MESSENGER_VERIFY_TOKEN || "";
@@ -308,6 +308,22 @@ export const instagramWebhook = onRequest(
 
         // Check test mode filter
         if (!isAllowedInTestMode(threadId)) {
+          continue;
+        }
+
+        // Handle conversation reset command
+        if (RESET_KEYWORD && message.text.trim().toLowerCase() === RESET_KEYWORD.toLowerCase()) {
+          logger.info("Reset command received, deleting conversation data", {
+            threadId,
+          });
+          try {
+            await deleteConversationData(threadId);
+          } catch (error) {
+            logger.error("Failed to delete conversation data", {
+              threadId,
+              error: error instanceof Error ? error.message : "Unknown error",
+            });
+          }
           continue;
         }
 
