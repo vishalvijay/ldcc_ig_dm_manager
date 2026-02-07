@@ -94,8 +94,8 @@ export async function scheduleProcessing(
       delaySeconds: DELAY_SECONDS,
     });
   } catch (error) {
-    const errCode = (error as { code?: string }).code;
-    if (errCode === "functions/already-exists") {
+    const errMessage = error instanceof Error ? error.message : String(error);
+    if (errMessage.includes("already exists")) {
       logger.info("Task already scheduled for thread (debouncing)", {
         threadId,
         messageId,
@@ -105,7 +105,7 @@ export async function scheduleProcessing(
       logger.error("Failed to schedule processing task", {
         threadId,
         messageId,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error,
       });
       throw error;
     }
