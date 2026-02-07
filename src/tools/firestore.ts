@@ -112,7 +112,7 @@ export function defineFirestoreTools(ai: Genkit): ToolAction[] {
     {
       name: "check_last_notification",
       description:
-        "Check if we can notify the manager about this user. There is a 7-day cooldown between notifications for the same user. ALWAYS call this before using the notifyManager action.",
+        "Check if we can notify the manager about this user. There is a 7-day cooldown between notifications for the same user. ALWAYS call this before using the escalate_to_manager action.",
       inputSchema: CheckLastNotificationInputSchema,
       outputSchema: CheckLastNotificationOutputSchema,
     },
