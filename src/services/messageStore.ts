@@ -78,16 +78,13 @@ export async function acquireThreadLock(threadId: string): Promise<boolean> {
  *
  * Uses a transaction to atomically:
  * 1. Set processing=false
- * 2. Store the lastProcessedMessageId
- * 3. Read whether hasPendingMessages was set during processing
+ * 2. Read whether hasPendingMessages was set during processing
  *
  * @param threadId - The conversation thread ID
- * @param lastProcessedMessageId - ID of the latest message processed
  * @returns Whether new messages arrived during processing (hasPendingMessages)
  */
 export async function releaseThreadLockAndCheck(
-  threadId: string,
-  lastProcessedMessageId: string
+  threadId: string
 ): Promise<boolean> {
   const db = getDb();
   const threadRef = db.collection(THREADS_COLLECTION).doc(threadId);
@@ -98,7 +95,6 @@ export async function releaseThreadLockAndCheck(
 
     transaction.update(threadRef, {
       processing: false,
-      lastProcessedMessageId,
     } as Partial<ThreadState>);
 
     return data?.hasPendingMessages ?? false;
@@ -106,7 +102,6 @@ export async function releaseThreadLockAndCheck(
 
   logger.info("Released thread lock", {
     threadId,
-    lastProcessedMessageId,
     hasPendingMessages: hasPending,
   });
 

@@ -85,8 +85,6 @@ Required in `.env` (see `.env.example` for template):
 - `WHATSAPP_BOOKING_TEMPLATE`, `WHATSAPP_ESCALATION_TEMPLATE` — WhatsApp message template names
 - `MANAGER_WHATSAPP_NUMBER` — For notifications
 - `NET_SESSION_COORDINATOR` — Contact info for net session queries
-- `PROCESS_MESSAGE_URL` — Cloud Tasks callback URL (also used as OIDC audience)
-- `CLOUD_TASKS_QUEUE` — Cloud Tasks queue name
 
 Optional:
 - `TEST_MODE_SENDER_ID` — When set, only accept messages from this sender ID (for testing)

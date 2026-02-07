@@ -47,50 +47,17 @@ export interface ConversationMessage {
 // Agent Response Actions
 // =============================================================================
 
-export const SendMessageActionSchema = z.object({
-  type: z.literal("send_instagram_message"),
-  text: z.string().describe("The message text to send to the user"),
-});
-
 export const ReactToMessageActionSchema = z.object({
   type: z.literal("react_to_instagram_message"),
   messageId: z.string().describe("The ID of the message to react to"),
   reaction: z.enum(["love", "like", "laugh", "wow", "sad", "angry"]).describe("The reaction to send"),
 });
 
-export const NotifyManagerActionSchema = z.object({
-  type: z.literal("escalate_to_manager"),
-  reason: z.string().describe("Brief reason for notifying the manager"),
-  summary: z.string().describe("Summary of the conversation for manager context"),
-});
-
-export const NoActionResponseSchema = z.object({
-  type: z.literal("no_action"),
-  reason: z.string().describe("Why no action is needed"),
-});
-
-export const AgentActionSchema = z.discriminatedUnion("type", [
-  SendMessageActionSchema,
-  ReactToMessageActionSchema,
-  NotifyManagerActionSchema,
-  NoActionResponseSchema,
-]);
-
-export const AgentResponseSchema = z.object({
-  thinking: z.string().describe("Agent's reasoning about how to respond"),
-  actions: z.array(AgentActionSchema).describe("List of actions to take (can be multiple)"),
-});
-
 // =============================================================================
 // Type Exports from Schemas
 // =============================================================================
 
-export type SendMessageAction = z.infer<typeof SendMessageActionSchema>;
 export type ReactToMessageAction = z.infer<typeof ReactToMessageActionSchema>;
-export type NotifyManagerAction = z.infer<typeof NotifyManagerActionSchema>;
-export type NoActionResponse = z.infer<typeof NoActionResponseSchema>;
-export type AgentAction = z.infer<typeof AgentActionSchema>;
-export type AgentResponse = z.infer<typeof AgentResponseSchema>;
 
 // =============================================================================
 // Firestore Thread State
@@ -99,7 +66,6 @@ export type AgentResponse = z.infer<typeof AgentResponseSchema>;
 export interface ThreadState {
   processing: boolean;
   hasPendingMessages: boolean;
-  lastProcessedMessageId?: string;
 }
 
 // =============================================================================
@@ -184,13 +150,3 @@ export interface MetaMessengerWebhookPayload {
   entry: MetaMessengerWebhookEntry[];
 }
 
-// =============================================================================
-// Execution Result Types
-// =============================================================================
-
-export interface ExecutionResult {
-  action: AgentAction;
-  success: boolean;
-  messageId?: string;
-  error?: string;
-}

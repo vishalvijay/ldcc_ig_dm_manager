@@ -7,6 +7,8 @@
 import * as logger from "firebase-functions/logger";
 import { z } from "zod";
 import { Genkit, ToolAction } from "genkit";
+import { getDb } from "../config/firebase";
+import { GRAPH_API_VERSION } from "../config";
 
 // WhatsApp configuration
 const WHATSAPP_ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN || "";
@@ -50,7 +52,7 @@ async function sendWhatsAppTemplateMessage(
   }
 
   try {
-    const url = `https://graph.facebook.com/v22.0/${WHATSAPP_PHONE_NUMBER_ID}/messages`;
+    const url = `https://graph.facebook.com/${GRAPH_API_VERSION}/${WHATSAPP_PHONE_NUMBER_ID}/messages`;
 
     // Build template components with parameters
     const components = templateParams.length > 0 ? [{
@@ -115,6 +117,7 @@ const NotifyBookingInputSchema = z.object({
 });
 
 const EscalateToManagerInputSchema = z.object({
+  userId: z.string().describe("The Instagram user ID"),
   reason: z.string().describe("Brief reason for escalation (e.g., 'Sponsorship inquiry', 'Complaint', 'Media request')"),
   summary: z.string().describe("Summary of the conversation for manager context"),
   username: z.string().describe("Instagram username of the person"),
@@ -187,9 +190,25 @@ export function defineWhatsAppTools(ai: Genkit): ToolAction[] {
       }
 
       // Template params: username only (keeping it simple to avoid delivery failures)
-      return sendWhatsAppTemplateMessage(MANAGER_WHATSAPP_NUMBER, WHATSAPP_ESCALATION_TEMPLATE, [
+      const result = await sendWhatsAppTemplateMessage(MANAGER_WHATSAPP_NUMBER, WHATSAPP_ESCALATION_TEMPLATE, [
         input.username,
       ]);
+
+      if (result.success) {
+        try {
+          await getDb().collection("users").doc(input.userId).set(
+            { lastNotification: Date.now() },
+            { merge: true }
+          );
+        } catch (error) {
+          logger.error("Failed to record lastNotification", {
+            userId: input.userId,
+            error: error instanceof Error ? error.message : "Unknown error",
+          });
+        }
+      }
+
+      return result;
     }
   );
 

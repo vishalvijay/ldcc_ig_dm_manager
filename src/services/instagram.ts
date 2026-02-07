@@ -6,9 +6,9 @@
 
 import * as logger from "firebase-functions/logger";
 import { InstagramSender, ReactToMessageAction } from "../types";
+import { GRAPH_API_VERSION } from "../config";
 
-// Graph API version
-const GRAPH_API_VERSION = "v24.0";
+// Graph API base URL
 const GRAPH_API_BASE = `https://graph.facebook.com/${GRAPH_API_VERSION}`;
 
 // Retry configuration
@@ -284,7 +284,7 @@ export class InstagramService {
     return messages
       .map((m) => ({
         id: m.id,
-        text: m.message,
+        text: m.message || "",
         fromId: m.from.id,
         createdTime: m.created_time,
       }))

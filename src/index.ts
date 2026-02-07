@@ -7,7 +7,9 @@
 import { enableFirebaseTelemetry } from "@genkit-ai/firebase";
 
 // Enable Firebase monitoring for GenKit (must be called before GenKit is initialized)
-enableFirebaseTelemetry();
+if (process.env.ENABLE_FIREBASE_MONITORING === "true") {
+  enableFirebaseTelemetry();
+}
 
 import { initializeFirebase } from "./config/firebase";
 

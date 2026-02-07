@@ -71,7 +71,7 @@ export const processMessage = onTaskDispatched(
 
       if (threadMessages.length === 0) {
         logger.warn("No messages found in Instagram conversation", { threadId });
-        await releaseThreadLockAndCheck(threadId, "");
+        await releaseThreadLockAndCheck(threadId);
         return;
       }
 
@@ -85,7 +85,6 @@ export const processMessage = onTaskDispatched(
 
       // Find the latest user message ID for reactions
       const latestUserMessageId = [...messages].reverse().find((m) => m.role === "user")?.messageId;
-      const latestMessageId = threadMessages[threadMessages.length - 1].id;
 
       // Get user profile
       const sender = await instagram.getUserProfile(threadId);
@@ -99,14 +98,14 @@ export const processMessage = onTaskDispatched(
           name: sender.name,
         },
         messages,
-        latestUserMessageId: latestUserMessageId || latestMessageId,
+        latestUserMessageId: latestUserMessageId || threadMessages[threadMessages.length - 1].id,
       };
 
       // Call the agent flow — it handles all actions via tool calls
       const result = await dmAgentFlow(input);
 
       // Release lock and check for new pending messages
-      const hasPending = await releaseThreadLockAndCheck(threadId, latestMessageId);
+      const hasPending = await releaseThreadLockAndCheck(threadId);
 
       logger.info("Message processing complete", {
         threadId,
@@ -132,7 +131,7 @@ export const processMessage = onTaskDispatched(
       logger.error("Message processing failed", { threadId, error: errorMessage });
 
       // Release the lock so future tasks can process
-      await releaseThreadLockAndCheck(threadId, "").catch((e) =>
+      await releaseThreadLockAndCheck(threadId).catch((e) =>
         logger.error("Failed to release thread lock after error", { error: e })
       );
 

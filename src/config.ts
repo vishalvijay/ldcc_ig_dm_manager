@@ -4,6 +4,9 @@
 
 export const REGION = process.env.CLOUD_FUNCTIONS_REGION || "europe-west2";
 
+/** Meta Graph API version — shared across Instagram and WhatsApp services. */
+export const GRAPH_API_VERSION = "v24.0";
+
 /**
  * Test mode: when set, only accept messages from this sender ID.
  * Leave empty/unset to accept messages from all users.

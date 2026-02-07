@@ -8,6 +8,7 @@
  * - Record bookings
  */
 
+import * as logger from "firebase-functions/logger";
 import { z } from "zod";
 import { Genkit, ToolAction } from "genkit";
 import { getDb } from "../config/firebase";
@@ -23,7 +24,6 @@ const GetUserProfileInputSchema = z.object({
 
 const GetUserProfileOutputSchema = z.object({
   userId: z.string(),
-  firstContact: z.number().optional().describe("Timestamp of first message"),
   lastNotification: z
     .number()
     .optional()
@@ -101,7 +101,6 @@ export function defineFirestoreTools(ai: Genkit): ToolAction[] {
       const data = userDoc.data();
       return {
         userId: input.userId,
-        firstContact: data?.firstContact,
         lastNotification: data?.lastNotification,
         bookings: data?.bookings || [],
       };
@@ -182,7 +181,7 @@ export function defineFirestoreTools(ai: Genkit): ToolAction[] {
           message: `Booking recorded for ${input.sessionDate}`,
         };
       } catch (error) {
-        console.error("Failed to record booking:", error);
+        logger.error("Failed to record booking:", error);
         return {
           success: false,
           message: `Failed to record booking: ${error}`,
