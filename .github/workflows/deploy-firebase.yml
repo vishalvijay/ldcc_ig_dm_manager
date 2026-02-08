@@ -35,6 +35,7 @@ jobs:
           echo "META_MESSENGER_PAGE_ID=${{ vars.META_MESSENGER_PAGE_ID }}" >> .env
           echo "META_MESSENGER_VERIFY_TOKEN=${{ secrets.META_MESSENGER_VERIFY_TOKEN }}" >> .env
           echo "META_MESSENGER_APP_SECRET=${{ secrets.META_MESSENGER_APP_SECRET }}" >> .env
+          echo "META_INSTAGRAM_ACCOUNT_ID=${{ vars.META_INSTAGRAM_ACCOUNT_ID }}" >> .env
           echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" >> .env
           echo "TELEGRAM_CHAT_ID=${{ vars.TELEGRAM_CHAT_ID }}" >> .env
           echo "NET_SESSION_COORDINATOR=${{ vars.NET_SESSION_COORDINATOR }}" >> .env
