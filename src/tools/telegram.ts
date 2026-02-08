@@ -100,6 +100,7 @@ const NotifyBookingInputSchema = z.object({
 
 const EscalateToManagerInputSchema = z.object({
   userId: z.string().describe("The Instagram user ID"),
+  conversationId: z.string().describe("The conversation/thread ID for tracking escalation status"),
   reason: z.string().describe("Brief reason for escalation (e.g., 'Sponsorship inquiry', 'Complaint', 'Media request')"),
   summary: z.string().describe("Summary of the conversation for manager context"),
   username: z.string().describe("Instagram username of the person"),
@@ -193,14 +194,27 @@ export function defineTelegramTools(ai: Genkit): ToolAction[] {
       const result = await sendTelegramMessage(message);
 
       if (result.success) {
+        const db = getDb();
         try {
-          await getDb().collection("users").doc(input.userId).set(
+          await db.collection("users").doc(input.userId).set(
             { lastNotification: Date.now() },
             { merge: true }
           );
         } catch (error) {
           logger.error("Failed to record lastNotification", {
             userId: input.userId,
+            error: error instanceof Error ? error.message : "Unknown error",
+          });
+        }
+
+        try {
+          await db.collection("threads").doc(input.conversationId).set(
+            { escalated: true },
+            { merge: true }
+          );
+        } catch (error) {
+          logger.error("Failed to set escalated flag on thread", {
+            conversationId: input.conversationId,
             error: error instanceof Error ? error.message : "Unknown error",
           });
         }

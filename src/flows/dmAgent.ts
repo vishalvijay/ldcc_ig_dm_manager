@@ -8,6 +8,7 @@
 import { z } from "zod";
 import * as logger from "firebase-functions/logger";
 import { ai } from "../config/genkit";
+import { getDb } from "../config/firebase";
 import { SYSTEM_PROMPT } from "../prompts/system";
 import { getAllTools } from "../tools";
 
@@ -52,10 +53,21 @@ export type DmAgentOutput = z.infer<typeof DmAgentOutputSchema>;
 /**
  * Build context string with IDs the agent needs for tool calls.
  */
-function buildContextInfo(context: DmAgentInput): string {
+async function buildContextInfo(context: DmAgentInput): Promise<string> {
   const userInfo = context.sender.username
     ? `@${context.sender.username}`
     : context.sender.name || "Unknown";
+
+  let escalated = false;
+  try {
+    const threadDoc = await getDb().collection("threads").doc(context.conversationId).get();
+    escalated = threadDoc.exists && threadDoc.data()?.escalated === true;
+  } catch (error) {
+    logger.warn("Failed to read thread escalation status", {
+      conversationId: context.conversationId,
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
 
   return `
 ## Current Context
@@ -63,6 +75,7 @@ function buildContextInfo(context: DmAgentInput): string {
 - User: ${userInfo}
 - Latest User Message ID (use for react_to_instagram_message): ${context.latestUserMessageId}
 - Conversation ID: ${context.conversationId}
+- Escalated to manager: ${escalated} (if true, do not respond — use no_action)
 `;
 }
 
@@ -89,7 +102,7 @@ export const dmAgentFlow = ai.defineFlow(
       }));
 
       // Build the full system prompt with context
-      const contextInfo = buildContextInfo(context);
+      const contextInfo = await buildContextInfo(context);
       const fullSystemPrompt = SYSTEM_PROMPT + contextInfo;
 
       // Get all available tools for the agent
