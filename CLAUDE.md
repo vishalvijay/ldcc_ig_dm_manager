@@ -26,54 +26,63 @@ Instagram DM agent for London Desperados Cricket Club built on Firebase Function
 
 The LLM orchestrates all conversations via tool calls — no hardcoded intent classification or state machines. The agent:
 1. Receives Instagram DMs via webhook (`webhookHandler.ts`) with HMAC-SHA256 signature validation
-2. Stores message in Firestore as `pending`, schedules Cloud Task with 60s debounce delay
-3. Cloud Task triggers `processMessage.ts` which claims pending messages atomically via Firestore transaction
-4. LLM in `dmAgentFlow` decides actions and calls tools directly (auto tool execution by GenKit)
-5. After processing, atomically checks for new pending messages and schedules follow-up task if needed
+2. Marks thread as pending in Firestore, schedules Cloud Task with 60s debounce delay
+3. Cloud Task triggers `processMessage.ts` which acquires thread lock atomically via Firestore transaction
+4. Fetches full conversation from Instagram Graph API, then invokes `dmAgentFlow` (LLM + tools, auto tool execution by GenKit)
+5. After processing, releases lock and checks for new pending messages; schedules follow-up task if needed
 
 ### Message Flow
 
 ```
-Instagram Webhook → Firestore (store as pending) → Cloud Tasks (60s debounce)
-→ processMessage (atomic claim via transaction) → dmAgent Flow (LLM + tools) → APIs
-→ markProcessedAndCheckPending → schedule follow-up if new messages arrived
+Instagram Webhook → markThreadPending (Firestore) → scheduleProcessing (Cloud Task, 60s debounce)
+→ processMessage (acquireThreadLock via transaction) → dmAgent Flow (LLM + tools) → APIs
+→ releaseThreadLockAndCheck → schedule follow-up if new messages arrived
 ```
 
 ### Tool Categories
 
-- **MCP Tools** (`src/tools/spond.ts`) — Net session dates from Spond via `@genkit-ai/mcp`
-- **Instagram Tools** (`src/tools/instagram.ts`) — sendInstagramMessage, reactToInstagramMessage, getThreadMessages, isNewThread
-- **Telegram Tools** (`src/tools/telegram.ts`) — notifyBookingConfirmed, escalateToManager (via Telegram Bot API)
-- **Firestore Tools** (`src/tools/firestore.ts`) — getConversationHistory, getUserProfile, checkLastNotification, recordBooking
-- **No-op Tool** (`src/tools/` via tool registry) — `no_action` for when the LLM decides no response is needed (e.g., reactions, duplicate messages, conversation already ended)
+- **MCP Tools** (`src/tools/spond.ts`) — Net session dates from Spond via `@genkit-ai/mcp` (registered as Dynamic Action Provider, referenced as `spond:tool/*`)
+- **Instagram Tools** (`src/tools/instagram.ts`) — `send_instagram_message`, `react_to_instagram_message`
+- **Telegram Tools** (`src/tools/telegram.ts`) — `notify_booking_confirmed`, `escalate_to_manager` (via Telegram Bot API)
+- **Firestore Tools** (`src/tools/firestore.ts`) — `get_user_profile`, `check_last_notification`, `record_booking`
+- **No-op Tool** (`src/tools/index.ts`) — `no_action` for when the LLM decides no response is needed (e.g., reactions, duplicate messages, conversation already ended)
 
 ### Firestore Collections
 
-- `conversations/{threadId}/messages/{messageId}` — Individual messages with status tracking
+- `threads/{threadId}` — Thread-level lock state (`processing`, `hasPendingMessages` booleans)
 - `users/{userId}` — User profiles, booking history, last notification timestamp
 - `bookings/{bookingId}` — Standalone booking records
-- Composite indexes required for status queries (see `firestore.indexes.json`, deploy with `firebase deploy --only firestore:indexes`)
+- Composite indexes defined in `firestore.indexes.json` (deploy with `firebase deploy --only firestore:indexes`)
 
-### Message States
+### Thread States
 
-`pending` → `processing` → `processed` (or `failed`)
+Thread-level state managed via `threads/{threadId}` document with two booleans:
+- `hasPendingMessages` — Set `true` by webhook when new message arrives
+- `processing` — Set `true` when a Cloud Task acquires the lock, `false` when released
 
 ### Concurrency Control
 
-- **Debouncing**: Cloud Tasks with time-window-based naming (60s buckets) prevents duplicate tasks per thread
-- **Atomic claiming**: Firestore transaction checks no messages are already `processing` before claiming `pending` ones
-- **Follow-up scheduling**: After processing, atomically marks messages processed and checks for new pending ones
+- **Debouncing**: Cloud Tasks with time-window-based naming (`process-{threadId}-{timeWindow}`) prevents duplicate tasks per thread
+- **Atomic locking**: Firestore transaction checks thread is not already `processing` and has pending messages before acquiring lock
+- **Follow-up scheduling**: After processing, atomically releases lock and checks if new messages arrived; schedules follow-up task if so
 
 ## Key Files
 
+- `src/index.ts` — Main entry point, exports functions and flows
+- `src/config.ts` — Shared constants (region, Graph API version, test mode, reset keyword)
+- `src/config/genkit.ts` — GenKit + model provider configuration (Anthropic or Google AI, lazy plugin init)
+- `src/config/firebase.ts` — Firebase Admin SDK initialization (singleton pattern)
 - `src/flows/dmAgent.ts` — Main GenKit flow with LLM and tool orchestration
 - `src/prompts/system.ts` — System prompt with club knowledge and behavioral guidelines
-- `src/config/genkit.ts` — GenKit + model provider configuration (Anthropic or Google AI)
-- `src/tools/index.ts` — Tool registry combining MCP and local tools
+- `src/tools/index.ts` — Tool registry combining MCP and local tools (with promise cache to prevent re-registration)
+- `src/tools/spond.ts` — Spond MCP client for net session dates
+- `src/tools/instagram.ts` — Instagram messaging and reaction tools
+- `src/tools/firestore.ts` — User profile, notification cooldown, and booking tools
+- `src/tools/telegram.ts` — Manager notification tools (booking confirmed, escalation)
 - `src/types/index.ts` — Zod schemas and TypeScript interfaces for messages, actions, webhooks
 - `src/functions/webhookHandler.ts` — Instagram webhook with HMAC signature validation
-- `src/functions/processMessage.ts` — Cloud Task callback with OIDC auth validation
-- `src/services/messageStore.ts` — Firestore operations, atomic claims, Cloud Tasks scheduling
+- `src/functions/processMessage.ts` — Cloud Task callback with thread lock acquisition
+- `src/services/messageStore.ts` — Thread state management, atomic locking, Cloud Tasks scheduling
 - `src/services/instagram.ts` — Instagram Graph API client with retry/rate-limit handling
 
 ## Environment Variables
