@@ -83,6 +83,7 @@ Required in `.env` (see `.env.example` for template):
 - `ANTHROPIC_API_KEY` — Required for `claude-*` models
 - `GOOGLE_API_KEY` — Required for `gemini-*` models
 - `META_MESSENGER_ACCESS_TOKEN`, `META_MESSENGER_PAGE_ID`, `META_MESSENGER_VERIFY_TOKEN`, `META_MESSENGER_APP_SECRET`
+- `META_INSTAGRAM_ACCOUNT_ID` — Instagram-scoped User ID (IGSID) for the page, used for role assignment in conversations
 - `TELEGRAM_BOT_TOKEN` — Telegram bot token from @BotFather
 - `TELEGRAM_CHAT_ID` — Telegram chat ID for manager notifications
 - `NET_SESSION_COORDINATOR` — Contact info for net session queries

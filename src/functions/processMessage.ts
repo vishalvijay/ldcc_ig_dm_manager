@@ -64,7 +64,7 @@ export const processMessage = onTaskDispatched(
 
     try {
       const instagram = getInstagramService();
-      const pageId = process.env.META_MESSENGER_PAGE_ID || "";
+      const igAccountId = process.env.META_INSTAGRAM_ACCOUNT_ID || "";
 
       // Fetch conversation history from Instagram API
       const threadMessages = await instagram.getConversationMessages(threadId, 50);
@@ -77,7 +77,7 @@ export const processMessage = onTaskDispatched(
 
       // Build conversation messages with roles assigned by sender
       const messages: ConversationMessage[] = threadMessages.map((m) => ({
-        role: m.fromId === pageId ? "assistant" as const : "user" as const,
+        role: m.fromId === igAccountId ? "assistant" as const : "user" as const,
         content: m.text,
         timestamp: new Date(m.createdTime).getTime(),
         messageId: m.id,
