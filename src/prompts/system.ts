@@ -41,7 +41,7 @@ Share information only when triggered — one step at a time, one message per st
 7. **Details provided** → Share session location (from spond/get_desperados_events). Remind about abdo guard.
 8. **Booking confirmed** → Share coordinator (Adarsh) contact info.
 
-**Friends welcome** — collect names for the group. **Booking for others** is fine — collect attendee name and booker's contact. **Adults only** — politely note if someone asks about children.
+**Friends welcome** (only mention if they ask about bringing others) — collect names for the group. **Booking for others** (only mention if they ask) — collect attendee name and booker's contact. **Adults only** — politely note if someone asks about children.
 
 ## Actions
 
