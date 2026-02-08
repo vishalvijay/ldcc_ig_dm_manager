@@ -7,7 +7,7 @@ Instagram DM agent for **London Desperados Cricket Club** that automatically han
 - Responds to Instagram DMs about joining the club
 - Guides users through a booking flow for trial net sessions
 - Fetches live session dates from Spond via MCP
-- Notifies the club manager via WhatsApp for confirmed bookings or non-joining inquiries
+- Notifies the club manager via Telegram for confirmed bookings or non-joining inquiries
 - Debounces rapid messages and handles concurrency safely
 
 The agent acts as Vishal (social media manager), using progressive information reveal — sharing club details first, then session dates, location, and booking confirmation only as the conversation progresses.
@@ -20,7 +20,7 @@ The agent acts as Vishal (social media manager), using progressive information r
 - **Firestore** — Message state tracking and user data
 - **Cloud Tasks** — Message debouncing with idempotency
 - **Instagram Graph API** — Receiving and sending DMs
-- **WhatsApp Business API** — Manager notifications via templates
+- **Telegram Bot API** — Manager notifications
 - **Spond MCP** — Live net session schedule
 
 ## Setup
@@ -30,7 +30,8 @@ The agent acts as Vishal (social media manager), using progressive information r
 - Node.js 22
 - Firebase CLI (`npm install -g firebase-tools`)
 - A Firebase project with Firestore and Cloud Tasks enabled
-- Meta App with Instagram Messaging and WhatsApp Business API access
+- Meta App with Instagram Messaging API access
+- Telegram bot (via @BotFather) for manager notifications
 
 ### Installation
 
@@ -51,15 +52,14 @@ See `.env.example` for the full list. Key variables:
 | `GOOGLE_API_KEY` | Google AI API key (for `gemini-*` models) |
 | `META_MESSENGER_ACCESS_TOKEN` | Instagram/Messenger page access token |
 | `META_MESSENGER_PAGE_ID` | Instagram page ID |
+| `META_INSTAGRAM_ACCOUNT_ID` | Instagram-scoped User ID (IGSID), used for role assignment in conversations |
 | `META_MESSENGER_VERIFY_TOKEN` | Webhook verification token |
-| `META_MESSENGER_APP_SECRET` | For webhook signature validation |
-| `WHATSAPP_ACCESS_TOKEN` | WhatsApp Business API token |
-| `WHATSAPP_PHONE_NUMBER_ID` | WhatsApp sender phone number ID |
-| `MANAGER_WHATSAPP_NUMBER` | Manager's WhatsApp number for notifications |
-| `PROCESS_MESSAGE_URL` | Cloud Tasks callback URL |
-| `CLOUD_TASKS_QUEUE` | Cloud Tasks queue name |
+| `META_MESSENGER_APP_SECRET` | For webhook HMAC-SHA256 signature validation |
+| `TELEGRAM_BOT_TOKEN` | Telegram bot token from @BotFather |
+| `TELEGRAM_CHAT_ID` | Telegram chat ID for manager notifications |
+| `NET_SESSION_COORDINATOR` | Coordinator name for net session queries (e.g. "Adarsh") |
 
-Optional: `TEST_MODE_SENDER_ID` (filter messages to a single sender for testing), `CLOUD_FUNCTIONS_REGION` (defaults to `europe-west2`).
+Optional: `TEST_MODE_SENDER_ID` (filter messages to a single sender for testing), `CLOUD_FUNCTIONS_REGION` (defaults to `europe-west2`), `DEBOUNCE_DELAY_SECONDS` (Cloud Tasks debounce window, default 60), `RESET_KEYWORD` (keyword to trigger conversation reset), `ENABLE_FIREBASE_MONITORING` (enable Firebase telemetry).
 
 ## Development
 
@@ -73,7 +73,7 @@ npm run genkit:dev      # GenKit dev UI with hot reload — test the dmAgent flo
 
 ### Firestore Indexes
 
-Composite indexes are required for message status queries:
+Composite indexes are defined in `firestore.indexes.json`:
 
 ```bash
 firebase deploy --only firestore:indexes
@@ -96,27 +96,28 @@ The workflow (`.github/workflows/deploy-firebase.yml`) runs lint, build, and dep
 ### Message Flow
 
 ```
-Instagram DM → Webhook (signature validation) → Firestore (store as pending)
-→ Cloud Tasks (60s debounce) → processMessage (atomic claim via transaction)
-→ dmAgent Flow (LLM + tools) → Instagram/WhatsApp APIs
-→ Mark processed + check for new pending messages
+Instagram DM → Webhook (HMAC-SHA256 signature validation) → markThreadPending (Firestore)
+→ scheduleProcessing (Cloud Task, 60s debounce) → processMessage (acquireThreadLock via transaction)
+→ dmAgent Flow (LLM + tools) → Instagram/Telegram APIs
+→ releaseThreadLockAndCheck → schedule follow-up if new messages arrived
 ```
 
 ### LLM Tool-Based Design
 
 No hardcoded intent classification or state machines. The LLM decides all actions via tool calls:
 
-- **Spond MCP** — Fetch net session dates
-- **Instagram tools** — Send messages, react to messages, check thread status
-- **WhatsApp tools** — Notify manager of bookings or escalations
-- **Firestore tools** — Conversation history, user profiles, booking records
+- **Spond MCP** — Fetch net session dates (via `@genkit-ai/mcp`)
+- **Instagram tools** — `send_instagram_message`, `react_to_instagram_message`
+- **Telegram tools** — `notify_booking_confirmed`, `escalate_to_manager`
+- **Firestore tools** — `get_user_profile`, `check_last_notification`, `record_booking`
+- **No-op** — `no_action` for when no response is needed
 
 ### Concurrency Control
 
-- **Debouncing**: Cloud Tasks with time-window-based naming (60s buckets) prevents duplicate processing
-- **Atomic claiming**: Firestore transactions ensure only one task processes a thread at a time
-- **Follow-up scheduling**: After processing, atomically checks for new messages that arrived during processing
+- **Debouncing**: Cloud Tasks with time-window-based naming (`process-{threadId}-{timeWindow}`) prevents duplicate processing
+- **Atomic locking**: Firestore transactions ensure only one task processes a thread at a time
+- **Follow-up scheduling**: After processing, atomically releases lock and checks if new messages arrived during processing
 
 ## Club Context
 
-**London Desperados Cricket Club** — London-based cricket club playing in Middlesex (Div 5) and Essex leagues with 3 teams. Middlesex and Essex League Champions 2023 & 2024. Currently recruiting players of any experience level through an Instagram ad campaign, with indoor net sessions at Leyton Sports Ground on weekends.
+**London Desperados Cricket Club** — London-based cricket club playing in Middlesex (Div 5) and Essex leagues with 2 teams across Saturdays and Sundays. Middlesex League champions 2023 & 2024, Essex League champions 2024. Currently recruiting players of any experience level through an Instagram ad campaign, with indoor net sessions at varying locations (fetched from Spond).
