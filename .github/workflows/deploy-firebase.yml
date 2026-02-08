@@ -46,4 +46,8 @@ jobs:
           echo "RESET_KEYWORD=${{ secrets.RESET_KEYWORD }}" >> .env
 
       - name: Deploy Cloud Functions and Firestore indexes
+        env:
+          AI_MODEL: ${{ vars.AI_MODEL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
         run: firebase deploy --only functions,firestore:indexes --project ${{ vars.FIREBASE_PROJECT_ID }} --force
