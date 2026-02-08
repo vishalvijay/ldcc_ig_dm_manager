@@ -4,7 +4,7 @@
 
 export const REGION = process.env.CLOUD_FUNCTIONS_REGION || "europe-west2";
 
-/** Meta Graph API version — shared across Instagram and WhatsApp services. */
+/** Meta Graph API version — used by Instagram Graph API. */
 export const GRAPH_API_VERSION = "v24.0";
 
 /**

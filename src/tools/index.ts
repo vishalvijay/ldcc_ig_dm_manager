@@ -1,7 +1,7 @@
 /**
  * Tools Registry - Central registration of all GenKit tools.
  *
- * Combines MCP tools (Spond) with locally defined tools (Firestore, Instagram, WhatsApp).
+ * Combines MCP tools (Spond) with locally defined tools (Firestore, Instagram, Telegram).
  */
 
 import { z } from "zod";
@@ -9,14 +9,14 @@ import { Genkit, ToolAction, ToolArgument } from "genkit";
 import { initSpondMcp, SPOND_TOOL_REF } from "./spond";
 import { defineFirestoreTools } from "./firestore";
 import { defineInstagramTools } from "./instagram";
-import { defineWhatsAppTools } from "./whatsapp";
+import { defineTelegramTools } from "./telegram";
 
 // Cache the loading promise to avoid race conditions with concurrent requests
 let toolsPromise: Promise<ToolArgument[]> | null = null;
 
 /**
  * Get all available tools for the AI agent.
- * Combines MCP tools (Spond) with locally defined tools (Firestore, Instagram, WhatsApp).
+ * Combines MCP tools (Spond) with locally defined tools (Firestore, Instagram, Telegram).
  * Caches the loading promise so concurrent callers await the same registration,
  * preventing "already registered" errors from GenKit.
  *
@@ -37,7 +37,7 @@ async function loadAllTools(ai: Genkit): Promise<ToolArgument[]> {
   // Define local tools
   const firestoreTools = defineFirestoreTools(ai);
   const instagramTools = defineInstagramTools(ai);
-  const whatsappTools = defineWhatsAppTools(ai);
+  const telegramTools = defineTelegramTools(ai);
 
   // No-op tool for when the LLM decides no response is needed
   const noAction = ai.defineTool(
@@ -56,7 +56,7 @@ async function loadAllTools(ai: Genkit): Promise<ToolArgument[]> {
   const localTools: ToolAction[] = [
     ...firestoreTools,
     ...instagramTools,
-    ...whatsappTools,
+    ...telegramTools,
     noAction,
   ];
 
@@ -74,4 +74,4 @@ async function loadAllTools(ai: Genkit): Promise<ToolArgument[]> {
 export { initSpondMcp, SPOND_TOOL_REF } from "./spond";
 export { defineFirestoreTools } from "./firestore";
 export { defineInstagramTools } from "./instagram";
-export { defineWhatsAppTools } from "./whatsapp";
+export { defineTelegramTools } from "./telegram";

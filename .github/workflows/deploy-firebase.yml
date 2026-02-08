@@ -33,11 +33,8 @@ jobs:
           echo "META_MESSENGER_PAGE_ID=${{ vars.META_MESSENGER_PAGE_ID }}" >> .env
           echo "META_MESSENGER_VERIFY_TOKEN=${{ secrets.META_MESSENGER_VERIFY_TOKEN }}" >> .env
           echo "META_MESSENGER_APP_SECRET=${{ secrets.META_MESSENGER_APP_SECRET }}" >> .env
-          echo "WHATSAPP_ACCESS_TOKEN=${{ secrets.WHATSAPP_ACCESS_TOKEN }}" >> .env
-          echo "WHATSAPP_PHONE_NUMBER_ID=${{ vars.WHATSAPP_PHONE_NUMBER_ID }}" >> .env
-          echo "MANAGER_WHATSAPP_NUMBER=${{ vars.MANAGER_WHATSAPP_NUMBER }}" >> .env
-          echo "WHATSAPP_BOOKING_TEMPLATE=${{ vars.WHATSAPP_BOOKING_TEMPLATE }}" >> .env
-          echo "WHATSAPP_ESCALATION_TEMPLATE=${{ vars.WHATSAPP_ESCALATION_TEMPLATE }}" >> .env
+          echo "TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }}" >> .env
+          echo "TELEGRAM_CHAT_ID=${{ vars.TELEGRAM_CHAT_ID }}" >> .env
           echo "NET_SESSION_COORDINATOR=${{ vars.NET_SESSION_COORDINATOR }}" >> .env
           echo "PROCESS_MESSAGE_URL=${{ vars.PROCESS_MESSAGE_URL }}" >> .env
           echo "CLOUD_TASKS_QUEUE=${{ vars.CLOUD_TASKS_QUEUE }}" >> .env

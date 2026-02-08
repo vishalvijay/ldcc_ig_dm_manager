@@ -43,7 +43,7 @@ Instagram Webhook → Firestore (store as pending) → Cloud Tasks (60s debounce
 
 - **MCP Tools** (`src/tools/spond.ts`) — Net session dates from Spond via `@genkit-ai/mcp`
 - **Instagram Tools** (`src/tools/instagram.ts`) — sendInstagramMessage, reactToInstagramMessage, getThreadMessages, isNewThread
-- **WhatsApp Tools** (`src/tools/whatsapp.ts`) — notifyBookingConfirmed, escalateToManager (via WhatsApp Business API templates)
+- **Telegram Tools** (`src/tools/telegram.ts`) — notifyBookingConfirmed, escalateToManager (via Telegram Bot API)
 - **Firestore Tools** (`src/tools/firestore.ts`) — getConversationHistory, getUserProfile, checkLastNotification, recordBooking
 - **No-op Tool** (`src/tools/` via tool registry) — `no_action` for when the LLM decides no response is needed (e.g., reactions, duplicate messages, conversation already ended)
 
@@ -81,9 +81,8 @@ Instagram Webhook → Firestore (store as pending) → Cloud Tasks (60s debounce
 Required in `.env` (see `.env.example` for template):
 - `GOOGLE_API_KEY` — Gemini API key
 - `META_MESSENGER_ACCESS_TOKEN`, `META_MESSENGER_PAGE_ID`, `META_MESSENGER_VERIFY_TOKEN`, `META_MESSENGER_APP_SECRET`
-- `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`
-- `WHATSAPP_BOOKING_TEMPLATE`, `WHATSAPP_ESCALATION_TEMPLATE` — WhatsApp message template names
-- `MANAGER_WHATSAPP_NUMBER` — For notifications
+- `TELEGRAM_BOT_TOKEN` — Telegram bot token from @BotFather
+- `TELEGRAM_CHAT_ID` — Telegram chat ID for manager notifications
 - `NET_SESSION_COORDINATOR` — Contact info for net session queries
 
 Optional:
@@ -105,6 +104,6 @@ npm run deploy                              # Deploy functions + Firestore index
 
 - Agent acts as Vishal (social media manager) for London Desperados Cricket Club
 - Progressive information reveal (don't share all details upfront) — controlled by system prompt in `src/prompts/system.ts`
-- Only respond to joining inquiries; notify manager via WhatsApp for other intents
+- Only respond to joining inquiries; notify manager via Telegram for other intents
 - Booking flow: interest → session dates (from Spond) → location → name/phone → confirmation
 - All club knowledge (leagues, achievements, net session details, tone guidelines) lives in the system prompt
