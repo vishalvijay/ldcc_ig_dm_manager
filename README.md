@@ -1,6 +1,6 @@
 # LDCC DM Manager
 
-Instagram DM agent for **London Desperados Cricket Club** that automatically handles incoming messages from potential new members. Built on Firebase Functions, Firebase GenKit, and Google AI (Gemini).
+Instagram DM agent for **London Desperados Cricket Club** that automatically handles incoming messages from potential new members. Built on Firebase Functions, Firebase GenKit, and a configurable LLM provider (Anthropic Claude or Google Gemini).
 
 ## What It Does
 
@@ -16,7 +16,7 @@ The agent acts as Vishal (social media manager), using progressive information r
 
 - **Firebase Functions v2** — Serverless runtime
 - **Firebase GenKit** — AI orchestration with tool calling
-- **Google AI (Gemini)** — LLM provider
+- **Anthropic (Claude) / Google AI (Gemini)** — LLM provider (configurable)
 - **Firestore** — Message state tracking and user data
 - **Cloud Tasks** — Message debouncing with idempotency
 - **Instagram Graph API** — Receiving and sending DMs
@@ -46,7 +46,9 @@ See `.env.example` for the full list. Key variables:
 
 | Variable | Description |
 |----------|-------------|
-| `GOOGLE_API_KEY` | Gemini API key |
+| `AI_MODEL` | Model name, e.g. `claude-sonnet-4` or `gemini-2.0-flash` (provider auto-detected) |
+| `ANTHROPIC_API_KEY` | Anthropic API key (for `claude-*` models) |
+| `GOOGLE_API_KEY` | Google AI API key (for `gemini-*` models) |
 | `META_MESSENGER_ACCESS_TOKEN` | Instagram/Messenger page access token |
 | `META_MESSENGER_PAGE_ID` | Instagram page ID |
 | `META_MESSENGER_VERIFY_TOKEN` | Webhook verification token |

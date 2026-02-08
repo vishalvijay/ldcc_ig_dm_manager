@@ -1,7 +1,7 @@
 /**
  * DM Agent Flow - Core LLM-powered conversation handler.
  *
- * Uses GenKit with Gemini to process Instagram DM conversations.
+ * Uses GenKit with a configurable LLM to process Instagram DM conversations.
  * The LLM directly calls tools to execute actions (send messages, react, notify).
  */
 

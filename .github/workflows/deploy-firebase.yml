@@ -28,6 +28,8 @@ jobs:
 
       - name: Create .env file
         run: |
+          echo "AI_MODEL=${{ vars.AI_MODEL }}" >> .env
+          echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}" >> .env
           echo "GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}" >> .env
           echo "META_MESSENGER_ACCESS_TOKEN=${{ secrets.META_MESSENGER_ACCESS_TOKEN }}" >> .env
           echo "META_MESSENGER_PAGE_ID=${{ vars.META_MESSENGER_PAGE_ID }}" >> .env

@@ -20,6 +20,7 @@
     "node": "22"
   },
   "dependencies": {
+    "@genkit-ai/anthropic": "^0.2.0",
     "@genkit-ai/firebase": "^1.28.0",
     "@genkit-ai/google-genai": "^1.28.0",
     "@genkit-ai/mcp": "^1.0.0",

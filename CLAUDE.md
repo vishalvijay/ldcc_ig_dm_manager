@@ -20,7 +20,7 @@ No automated test suite exists. Test flows manually via GenKit dev UI (`npm run 
 
 ## Architecture
 
-Instagram DM agent for London Desperados Cricket Club built on Firebase Functions v2, Firebase GenKit (AI orchestration), Google AI (Gemini 3 Flash Preview), Firestore (state management), and Cloud Tasks (message debouncing).
+Instagram DM agent for London Desperados Cricket Club built on Firebase Functions v2, Firebase GenKit (AI orchestration), configurable LLM provider (Anthropic Claude or Google Gemini), Firestore (state management), and Cloud Tasks (message debouncing).
 
 ### Tool-Based Architecture
 
@@ -68,7 +68,7 @@ Instagram Webhook → Firestore (store as pending) → Cloud Tasks (60s debounce
 
 - `src/flows/dmAgent.ts` — Main GenKit flow with LLM and tool orchestration
 - `src/prompts/system.ts` — System prompt with club knowledge and behavioral guidelines
-- `src/config/genkit.ts` — GenKit + Gemini model configuration
+- `src/config/genkit.ts` — GenKit + model provider configuration (Anthropic or Google AI)
 - `src/tools/index.ts` — Tool registry combining MCP and local tools
 - `src/types/index.ts` — Zod schemas and TypeScript interfaces for messages, actions, webhooks
 - `src/functions/webhookHandler.ts` — Instagram webhook with HMAC signature validation
@@ -79,7 +79,9 @@ Instagram Webhook → Firestore (store as pending) → Cloud Tasks (60s debounce
 ## Environment Variables
 
 Required in `.env` (see `.env.example` for template):
-- `GOOGLE_API_KEY` — Gemini API key
+- `AI_MODEL` — Model name, e.g. `claude-sonnet-4` or `gemini-2.0-flash` (provider auto-detected from name)
+- `ANTHROPIC_API_KEY` — Required for `claude-*` models
+- `GOOGLE_API_KEY` — Required for `gemini-*` models
 - `META_MESSENGER_ACCESS_TOKEN`, `META_MESSENGER_PAGE_ID`, `META_MESSENGER_VERIFY_TOKEN`, `META_MESSENGER_APP_SECRET`
 - `TELEGRAM_BOT_TOKEN` — Telegram bot token from @BotFather
 - `TELEGRAM_CHAT_ID` — Telegram chat ID for manager notifications
