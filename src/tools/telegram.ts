@@ -152,10 +152,10 @@ export function defineTelegramTools(ai: Genkit): ToolAction[] {
       }
 
       const message = [
-        `📋 *New Booking Confirmed*`,
+        `📋 *Nets Booking Confirmed*`,
         ``,
         `👤 *Name:* ${esc(displayName)}`,
-        `📸 *Instagram:* @${esc(input.username)}`,
+        `📸 *Instagram:* [@${esc(input.username)}](https://instagram\\.com/${esc(input.username)})`,
         `📅 *Session:* ${esc(input.sessionDate)}`,
         `📞 *Phone:* ${esc(contact)}`,
         ...optionalLines,
@@ -183,7 +183,7 @@ export function defineTelegramTools(ai: Genkit): ToolAction[] {
       const message = [
         `🚨 *Escalation \\- ${esc(input.priority || "normal")}*`,
         ``,
-        `📸 *Instagram:* @${esc(input.username)}`,
+        `📸 *Instagram:* [@${esc(input.username)}](https://instagram\\.com/${esc(input.username)})`,
         `📝 *Reason:* ${esc(input.reason)}`,
         ``,
         `💬 *Summary:*`,
