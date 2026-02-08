@@ -15,10 +15,19 @@ import { googleAI } from "@genkit-ai/google-genai";
 const modelName = process.env.AI_MODEL || "claude-sonnet-4";
 const isGoogle = modelName.startsWith("gemini") || modelName.startsWith("google/");
 
-const plugin = isGoogle ? googleAI() : anthropic();
+// Only initialise the provider plugin when the API key is available.
+// During `firebase deploy` source analysis the key isn't in process.env,
+// but the exported functions still need to be discoverable.
+const plugins = [];
+if (isGoogle && process.env.GOOGLE_API_KEY) {
+  plugins.push(googleAI());
+} else if (!isGoogle && process.env.ANTHROPIC_API_KEY) {
+  plugins.push(anthropic());
+}
+
 const model = isGoogle ? googleAI.model(modelName) : anthropic.model(modelName);
 
 export const ai = genkit({
-  plugins: [plugin],
+  plugins,
   model,
 });
