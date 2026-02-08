@@ -126,6 +126,16 @@ async function fetchWithRetry(
 /**
  * Instagram Graph API client.
  */
+// Map reaction names to emoji characters expected by the Graph API
+const REACTION_EMOJI_MAP: Record<string, string> = {
+  love: "\u2764\uFE0F",
+  like: "\uD83D\uDC4D",
+  laugh: "\uD83D\uDE02",
+  wow: "\uD83D\uDE2E",
+  sad: "\uD83D\uDE22",
+  angry: "\uD83D\uDE21",
+};
+
 export class InstagramService {
   private accessToken: string;
   private pageId: string;
@@ -203,7 +213,10 @@ export class InstagramService {
       body: JSON.stringify({
         recipient: { id: recipientId },
         sender_action: "react",
-        payload: { message_id: messageId, reaction },
+        payload: {
+          message_id: messageId,
+          reaction: REACTION_EMOJI_MAP[reaction] || reaction,
+        },
       }),
     });
 

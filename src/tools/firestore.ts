@@ -149,13 +149,13 @@ export function defineFirestoreTools(ai: Genkit): ToolAction[] {
       const db = getDb();
       const now = Date.now();
 
-      const booking = {
+      const booking: Record<string, unknown> = {
         sessionDate: input.sessionDate,
         bookedAt: now,
-        userName: input.userName,
-        phone: input.phone,
         threadId: input.threadId,
       };
+      if (input.userName) booking.userName = input.userName;
+      if (input.phone) booking.phone = input.phone;
 
       try {
         // Add booking to user's profile
