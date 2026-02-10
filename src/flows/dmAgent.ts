@@ -119,7 +119,6 @@ export const dmAgentFlow = ai.defineFlow(
         system: fullSystemPrompt,
         messages: conversationHistory,
         tools,
-        maxTurns: 1,
       });
 
       // Track which tools were called
