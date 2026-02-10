@@ -78,7 +78,7 @@ export const processMessage = onTaskDispatched(
       // Build conversation messages with roles assigned by sender
       const messages: ConversationMessage[] = threadMessages.map((m) => ({
         role: m.fromId === igAccountId ? "assistant" as const : "user" as const,
-        content: m.text,
+        content: m.text || "[Non-text message — the user sent an image, sticker, reel, or other media. Respond appropriately or use no_action if no reply is needed.]",
         timestamp: new Date(m.createdTime).getTime(),
         messageId: m.id,
       }));

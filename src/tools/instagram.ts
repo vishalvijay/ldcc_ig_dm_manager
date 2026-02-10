@@ -6,8 +6,16 @@
  */
 
 import { z } from "zod";
+import * as logger from "firebase-functions/logger";
 import { Genkit, ToolAction } from "genkit";
 import { getInstagramService } from "../services/instagram";
+
+// Session guard — prevents multiple sends per processing session
+let _messageSentThisSession = false;
+
+export function resetMessageSentFlag() {
+  _messageSentThisSession = false;
+}
 
 // =============================================================================
 // Schema Definitions - Action Tools
@@ -53,6 +61,12 @@ export function defineInstagramTools(ai: Genkit): ToolAction[] {
       outputSchema: SendMessageOutputSchema,
     },
     async (input) => {
+      if (_messageSentThisSession) {
+        logger.warn("Blocked duplicate send_instagram_message call", { recipientId: input.recipientId });
+        return { success: true, error: "Ignored: a message was already sent this turn." };
+      }
+      _messageSentThisSession = true;
+
       try {
         const instagram = getInstagramService();
         const messageId = await instagram.sendMessage(input.recipientId, input.text);

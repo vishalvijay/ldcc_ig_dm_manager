@@ -11,6 +11,7 @@ import { ai } from "../config/genkit";
 import { getDb } from "../config/firebase";
 import { SYSTEM_PROMPT } from "../prompts/system";
 import { getAllTools } from "../tools";
+import { resetMessageSentFlag } from "../tools/instagram";
 
 /**
  * Input schema for the DM Agent flow.
@@ -113,6 +114,9 @@ export const dmAgentFlow = ai.defineFlow(
         toolCount: tools.length,
         messageCount: conversationHistory.length,
       });
+
+      // Reset session guard before generating — allows exactly one send per invocation
+      resetMessageSentFlag();
 
       // Generate response - LLM will call tools directly
       const response = await ai.generate({
