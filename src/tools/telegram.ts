@@ -137,7 +137,8 @@ export function defineTelegramTools(ai: Genkit): ToolAction[] {
       outputSchema: TelegramOutputSchema,
     },
     async (input) => {
-      const displayName = input.userName || `@${input.username}`;
+      const username = input.username.replace(/^@/, "");
+      const displayName = input.userName || `@${username}`;
       const contact = input.userPhone || "Not provided";
       const esc = escapeMarkdownV2;
 
@@ -156,7 +157,7 @@ export function defineTelegramTools(ai: Genkit): ToolAction[] {
         `📋 *Nets Booking Confirmed*`,
         ``,
         `👤 *Name:* ${esc(displayName)}`,
-        `📸 *Instagram:* [@${esc(input.username)}](https://instagram\\.com/${esc(input.username)})`,
+        `📸 *Instagram:* [@${esc(username)}](https://instagram\\.com/${esc(username)})`,
         `📅 *Session:* ${esc(input.sessionDate)}`,
         `📞 *Phone:* ${esc(contact)}`,
         ...optionalLines,
@@ -179,12 +180,13 @@ export function defineTelegramTools(ai: Genkit): ToolAction[] {
       outputSchema: TelegramOutputSchema,
     },
     async (input) => {
+      const username = input.username.replace(/^@/, "");
       const esc = escapeMarkdownV2;
 
       const message = [
         `🚨 *Escalation \\- ${esc(input.priority || "normal")}*`,
         ``,
-        `📸 *Instagram:* [@${esc(input.username)}](https://instagram\\.com/${esc(input.username)})`,
+        `📸 *Instagram:* [@${esc(username)}](https://instagram\\.com/${esc(username)})`,
         `📝 *Reason:* ${esc(input.reason)}`,
         ``,
         `💬 *Summary:*`,
